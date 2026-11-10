@@ -15,6 +15,7 @@ import {
   toast,
 } from "@/components/ui";
 import { isDummyWa, toWaNumber } from "@/lib/format";
+import { REMOTE } from "@/lib/mode";
 import { ROLE_LABEL } from "@/lib/labels";
 import { removeAccount, resetDemo, saveAccount, updateSettings, useApp } from "@/lib/store";
 import type { AdminAccount, Settings } from "@/lib/types";
@@ -211,6 +212,7 @@ export default function AkunPage() {
         />
       </section>
 
+      {!REMOTE && (
       <section aria-labelledby="reset-title" className="pt-8">
         <h2 id="reset-title" className="pb-3 text-[21px]">
           Data demo
@@ -224,6 +226,7 @@ export default function AkunPage() {
           </Button>
         </Card>
       </section>
+      )}
 
       <Sheet variant="modal" open={open !== null} onClose={() => setOpen(null)} title={editing ? "Ubah akun admin" : "Tambah akun admin"}>
         <AccountForm key={open ?? "none"} account={editing} onClose={() => setOpen(null)} />

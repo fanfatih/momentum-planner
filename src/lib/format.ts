@@ -1,3 +1,4 @@
+import { REMOTE } from "./mode";
 const rupiah = new Intl.NumberFormat("id-ID", {
   style: "currency",
   currency: "IDR",
@@ -78,6 +79,8 @@ export function coupleLabel(bride: string, groom: string): string {
 }
 
 export function uid(prefix: string): string {
+  // Mode database memakai UUID penuh karena kolom id di Postgres bertipe uuid.
+  if (REMOTE && typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
   const rand =
     typeof crypto !== "undefined" && "randomUUID" in crypto
       ? crypto.randomUUID().slice(0, 8)

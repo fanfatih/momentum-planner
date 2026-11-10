@@ -197,6 +197,9 @@ create index on public.budget_items (wedding_id);
 create index on public.guests (wedding_id);
 create index on public.rundown_items (wedding_id);
 create index on public.change_requests (wedding_id);
+create index on public.wedding_links (org_id);
+create index on public.favorites (venue_id);
+create index on public.wedding_vendors (vendor_id);
 
 -- Fungsi bantu. SECURITY DEFINER supaya pengecekan tidak ikut terkena RLS dan berputar tanpa henti.
 

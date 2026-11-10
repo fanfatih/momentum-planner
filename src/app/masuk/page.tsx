@@ -1,13 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Icon } from "@/components/icons";
 import { Monogram, Wordmark } from "@/components/Logo";
 import { DemoRibbon, StorageNotice } from "@/components/shell";
-import { Button, Reveal, Segmented, TextField, toast } from "@/components/ui";
-import { homeFor } from "@/lib/guard";
-import { joinWedding, login, resetDemo, startNewCouple, useMeta } from "@/lib/store";
+import { Button, LoadingState, Notice, Reveal, Segmented, TextField, toast } from "@/components/ui";
+import { COUPLE_ROLES, homeFor } from "@/lib/guard";
+import { REMOTE } from "@/lib/mode";
+import { joinWedding, login, logout, resetDemo, signInWithGoogle, startNewCouple, useApp, useMeta } from "@/lib/store";
 import type { CoupleSide, Role } from "@/lib/types";
 
 const TEAM: { role: Role; label: string; note: string }[] = [
@@ -18,28 +19,65 @@ const TEAM: { role: Role; label: string; note: string }[] = [
 
 export default function MasukPage() {
   const router = useRouter();
-  const { hydrated } = useMeta();
+  const { hydrated, authed, email } = useMeta();
+  const session = useApp((s) => s.session);
   const [side, setSide] = useState<CoupleSide>("bride");
   const [code, setCode] = useState("");
   const [codeError, setCodeError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [googleError, setGoogleError] = useState("");
+
+  // Mode database: yang sudah punya proyek (atau akun admin) langsung masuk ke halamannya.
+  const pendingCouple = !!session && COUPLE_ROLES.includes(session.role) && !session.weddingId;
+  useEffect(() => {
+    if (REMOTE && hydrated && authed && session && !pendingCouple) router.replace(homeFor(session.role));
+  }, [hydrated, authed, session, pendingCouple, router]);
 
   const enter = (role: Role) => {
     login(role);
     router.push(homeFor(role));
   };
 
-  const join = (e: React.FormEvent) => {
+  const google = async () => {
+    setBusy(true);
+    setGoogleError("");
+    const err = await signInWithGoogle();
+    if (err) {
+      setGoogleError(err);
+      setBusy(false);
+    }
+  };
+
+  const create = async () => {
+    setBusy(true);
+    const id = await startNewCouple(side);
+    setBusy(false);
+    if (id) router.push("/mulai");
+  };
+
+  const join = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!code.trim()) {
       setCodeError("Isi kode dari pasanganmu dulu.");
       return;
     }
-    if (!joinWedding(code, side)) {
+    setBusy(true);
+    const result = await joinWedding(code, side);
+    setBusy(false);
+    if (result === "notfound") {
       setCodeError("Kode ini tidak ditemukan. Cek lagi huruf dan angkanya.");
       return;
     }
-    router.push("/beranda");
+    if (result === "taken") {
+      setCodeError("Sisi itu sudah terisi di proyek tersebut. Pilih sisi pengantin yang satunya.");
+      return;
+    }
+    if (result === "ok") router.push("/beranda");
   };
+
+  const showGoogle = REMOTE && !authed;
+  const showDemo = !REMOTE;
+  const showCouple = REMOTE ? pendingCouple : true;
 
   return (
     <main className="phone-frame pb-12">
@@ -58,15 +96,46 @@ export default function MasukPage() {
         </p>
       </Reveal>
 
-      <Reveal i={1} className="px-5 pt-6">
-        <Button variant="secondary" block disabled aria-describedby="google-note">
-          Masuk dengan Google
-        </Button>
-        <p id="google-note" className="mt-2 text-[13px] text-ink-soft">
-          Belum aktif. Login Google menyala setelah database Supabase tersambung.
-        </p>
-      </Reveal>
+      {REMOTE && !hydrated && <LoadingState what="akunmu" />}
 
+      {showGoogle && hydrated && (
+        <Reveal i={1} className="px-5 pt-6">
+          <Button block disabled={busy} onClick={google}>
+            Masuk dengan Google
+          </Button>
+          {googleError ? (
+            <p role="alert" className="mt-2 text-[13px] font-medium text-brand-deep">
+              {googleError}
+            </p>
+          ) : (
+            <p className="mt-2 text-[13px] text-ink-soft">
+              Pengantin baru otomatis terdaftar saat pertama masuk. Admin Mahesa dan Momentum masuk dengan email yang
+              sudah didaftarkan.
+            </p>
+          )}
+        </Reveal>
+      )}
+
+      {!REMOTE && (
+        <Reveal i={1} className="px-5 pt-6">
+          <Button variant="secondary" block disabled aria-describedby="google-note">
+            Masuk dengan Google
+          </Button>
+          <p id="google-note" className="mt-2 text-[13px] text-ink-soft">
+            Belum aktif di versi demo. Login Google menyala setelah database Supabase tersambung.
+          </p>
+        </Reveal>
+      )}
+
+      {REMOTE && pendingCouple && (
+        <Reveal i={1} className="px-5 pt-6">
+          <Notice>
+            Masuk sebagai {email}. Satu langkah lagi: buat proyek baru atau gabung ke proyek pasanganmu.
+          </Notice>
+        </Reveal>
+      )}
+
+      {showDemo && (
       <Reveal i={2} className="px-5 pt-8">
         <h2 className="text-[21px]">Lihat proyek contoh</h2>
         <p className="mt-1 text-[15px] text-ink-soft">Dua akun pengantin membuka proyek yang sama.</p>
@@ -79,7 +148,9 @@ export default function MasukPage() {
           </Button>
         </div>
       </Reveal>
+      )}
 
+      {showCouple && hydrated && (
       <Reveal i={3} className="px-5 pt-8">
         <h2 className="text-[21px]">Pasangan baru</h2>
         <p className="mt-1 text-[15px] text-ink-soft">Mulai dari proyek kosong, atau gabung ke proyek pasanganmu.</p>
@@ -96,11 +167,8 @@ export default function MasukPage() {
           <Button
             variant="secondary"
             block
-            disabled={!hydrated}
-            onClick={() => {
-              startNewCouple(side);
-              router.push("/mulai");
-            }}
+            disabled={!hydrated || busy}
+            onClick={create}
           >
             Buat proyek baru
           </Button>
@@ -118,12 +186,19 @@ export default function MasukPage() {
               setCodeError("");
             }}
           />
-          <Button type="submit" variant="secondary" block disabled={!hydrated}>
+          <Button type="submit" variant="secondary" block disabled={!hydrated || busy}>
             Gabung ke proyek pasangan
           </Button>
         </form>
+        {REMOTE && (
+          <Button variant="ghost" block className="mt-3" onClick={logout}>
+            Pakai akun Google lain
+          </Button>
+        )}
       </Reveal>
+      )}
 
+      {showDemo && (
       <Reveal i={4} className="px-5 pt-8">
         <h2 className="text-[21px]">Tim Mahesa dan Momentum</h2>
         <ul className="mt-3 divide-y divide-line rounded-[14px] border border-line bg-paper">
@@ -145,7 +220,9 @@ export default function MasukPage() {
           ))}
         </ul>
       </Reveal>
+      )}
 
+      {showDemo && (
       <div className="px-5 pt-8">
         <Button
           variant="ghost"
@@ -158,6 +235,7 @@ export default function MasukPage() {
           Kembalikan data demo ke awal
         </Button>
       </div>
+      )}
     </main>
   );
 }

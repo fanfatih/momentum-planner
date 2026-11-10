@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { dismissLoadError, useMeta } from "@/lib/store";
+import { REMOTE } from "@/lib/mode";
+import { dismissLoadError, dismissSyncError, useMeta } from "@/lib/store";
 import { Icon, type IconName } from "./icons";
 import { Button, cx, Notice } from "./ui";
 
 export function DemoRibbon() {
+  if (REMOTE) return null;
   return (
     <p className="bg-butter px-4 py-1.5 text-center text-xs font-medium text-ink">
       Mode demo: data contoh, tersimpan di perangkat ini saja.
@@ -16,8 +18,8 @@ export function DemoRibbon() {
 }
 
 export function StorageNotice() {
-  const { loadError, saveError } = useMeta();
-  if (!loadError && !saveError) return null;
+  const { loadError, saveError, syncError } = useMeta();
+  if (!loadError && !saveError && !syncError) return null;
   return (
     <div className="space-y-2 px-4 pt-3">
       {loadError && (
@@ -30,6 +32,18 @@ export function StorageNotice() {
           }
         >
           {loadError}
+        </Notice>
+      )}
+      {syncError && (
+        <Notice
+          tone="brand"
+          action={
+            <Button variant="ghost" className="-my-1.5 shrink-0" onClick={dismissSyncError}>
+              Mengerti
+            </Button>
+          }
+        >
+          {syncError}
         </Notice>
       )}
       {saveError && (

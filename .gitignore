@@ -42,3 +42,5 @@ next-env.d.ts
 
 # hasil uji lokal
 tests/e2e/shots/
+
+!.env.example

@@ -17,7 +17,9 @@ export function useGuard(allowed: Role[]) {
   const { hydrated } = useMeta();
   const session = useApp((s) => s.session);
   const router = useRouter();
-  const ok = !!session && allowed.includes(session.role);
+  // Akun pengantin tanpa proyek belum boleh membuka layar proyek.
+  const ok =
+    !!session && allowed.includes(session.role) && (!COUPLE_ROLES.includes(session.role) || !!session.weddingId);
 
   useEffect(() => {
     if (hydrated && !ok) router.replace("/masuk");
