@@ -62,3 +62,7 @@ node tests/e2e/headings.js
 1. Jalankan `supabase/migrations/0001_init.sql` di proyek Supabase, lalu isi `admin_invites` dengan email admin.
 2. Aktifkan login Google di Supabase Auth dan sambungkan `src/lib/store.ts` ke database.
 3. Deploy, lalu ganti kontak contoh dan isi katalog venue serta vendor asli.
+
+## Deploy
+
+Proyek ini terhubung ke Vercel. Isi `NEXT_PUBLIC_SUPABASE_URL` dan `NEXT_PUBLIC_SUPABASE_ANON_KEY` di Settings > Environment Variables (lihat `.env.example`).
