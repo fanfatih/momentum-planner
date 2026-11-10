@@ -184,7 +184,9 @@ export default function AkunPage() {
               Akun admin
             </h2>
             <p className="mt-1 max-w-[60ch] text-[15px] text-ink-soft">
-              Di mode demo daftar ini belum membatasi siapa pun. Pembatasan berlaku setelah login Google tersambung.
+              {REMOTE
+                ? "Hanya email di daftar ini yang mendapat akses admin saat pertama kali masuk dengan Google. Email lain masuk sebagai pengantin."
+                : "Di mode demo daftar ini belum membatasi siapa pun. Pembatasan berlaku setelah login Google tersambung."}
             </p>
           </div>
           <Button icon="plus" onClick={() => setOpen("new")}>
