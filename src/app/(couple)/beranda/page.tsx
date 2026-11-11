@@ -86,6 +86,7 @@ export default function BerandaPage() {
   const guests = useApp((s) => s.guests);
   const weddingVendors = useApp((s) => s.weddingVendors);
   const allRequests = useApp((s) => s.requests);
+  const invitations = useApp((s) => s.invitations);
   const [profileOpen, setProfileOpen] = useState(false);
   const [changeFor, setChangeFor] = useState<{ org: OrgKey; section: string } | null>(null);
 
@@ -111,6 +112,7 @@ export default function BerandaPage() {
   const myVendors = weddingVendors.filter((v) => v.weddingId === wedding.id);
   const deals = myVendors.filter((v) => v.status === "deal").length;
   const requests = allRequests.filter((r) => r.weddingId === wedding.id);
+  const myInvitation = invitations.find((i) => i.weddingId === wedding.id);
   const myName = role === "groom" ? wedding.groomName : wedding.brideName;
 
   const summary = [
@@ -130,6 +132,12 @@ export default function BerandaPage() {
       href: "/vendor",
       label: "Vendor",
       value: myVendors.length ? `${deals} deal dari ${myVendors.length} pilihan` : "Belum ada vendor disimpan",
+    },
+    {
+      href: "/undangan",
+      label: "Undangan digital",
+      value:
+        wedding.plan !== "premium" ? "Fitur premium" : myInvitation ? "Isi undangan tersimpan" : "Belum diisi",
     },
   ];
 

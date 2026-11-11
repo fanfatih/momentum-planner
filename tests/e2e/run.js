@@ -340,6 +340,43 @@ const step = async (name, fn) => { try { const r = await fn(); log(r !== false, 
   await page.screenshot({ path: 'tests/e2e/shots/15-admin-akun.png', fullPage: true });
   await btn('Keluar').click(); await page.waitForURL('**/masuk');
 
+  // M2. Undangan digital: terkunci untuk paket gratis, editor untuk premium
+  await page.setViewportSize({ width: 390, height: 844 });
+  await enter('Pengantin wanita', '/beranda');
+  await step('undangan: paket gratis -> halaman terkunci dan WA tanya paket', async () => {
+    await page.goto(BASE + '/undangan'); await page.getByRole('heading', { name: 'Undangan digital untuk pernikahanmu' }).waitFor();
+    await btn('Tanya paket premium').click(); await dialog().waitFor();
+    const href = await dialog().getByRole('link', { name: 'Kirim lewat WhatsApp' }).getAttribute('href');
+    await page.keyboard.press('Escape');
+    return href.startsWith('https://wa.me/') && decodeURIComponent(href).includes('Undangan Digital Premium') ? 'wa ok' : false;
+  });
+  await page.goto(BASE + '/masuk'); await btn('Super Admin', false).click(); await page.waitForURL('**/admin');
+  await step('super admin: aktifkan paket premium di proyek Aulia & Raka', async () => {
+    await page.goto(BASE + '/admin/proyek/w1');
+    await page.getByRole('group', { name: 'Paket proyek' }).getByRole('button', { name: 'Premium' }).click(); await page.waitForTimeout(200);
+    return await page.getByRole('group', { name: 'Paket proyek' }).getByRole('button', { name: 'Premium' }).getAttribute('aria-pressed') === 'true';
+  });
+  await enter('Pengantin wanita', '/beranda');
+  await step('undangan: premium -> editor, nama terisi dari proyek, alamat tidak valid ditolak', async () => {
+    await page.goto(BASE + '/undangan'); await page.getByRole('heading', { name: 'Alamat undangan' }).waitFor();
+    const filled = (await page.getByLabel('Nama lengkap mempelai wanita').inputValue()) === 'Aulia' && (await page.getByLabel('Nama di alamat').inputValue()) === 'aulia-raka';
+    await page.getByLabel('Nama di alamat').fill('Nama Salah!'); await btn('Simpan isi undangan').click();
+    const err = await page.getByText(/huruf kecil, angka, atau tanda hubung/).isVisible();
+    return filled && err;
+  });
+  await step('undangan: simpan isi lengkap, tetap ada setelah muat ulang', async () => {
+    await page.getByLabel('Nama di alamat').fill('aulia-raka-bogor');
+    await page.getByLabel('Jam').first().fill('08.00 WIB');
+    await btn('Tambah rekening').click(); await page.getByLabel('Nomor rekening').fill('1234567890');
+    await btn('Simpan isi undangan').click(); await page.getByText('Isi undangan disimpan.').waitFor();
+    await page.reload(); await page.getByRole('heading', { name: 'Alamat undangan' }).waitFor();
+    return (await page.getByLabel('Nama di alamat').inputValue()) === 'aulia-raka-bogor' && (await page.getByLabel('Nomor rekening').inputValue()) === '1234567890';
+  });
+  await step('beranda: baris Undangan digital menunjukkan isi tersimpan', async () => {
+    await page.goto(BASE + '/beranda'); return await page.getByRole('link', { name: /Undangan digital/ }).getByText('Isi undangan tersimpan').isVisible();
+  });
+  await page.goto(BASE + '/masuk'); await page.waitForTimeout(100);
+
   // N. Pasangan baru, item default baru ikut tampil
   await page.setViewportSize({ width: 390, height: 844 });
   await step('pasangan baru: buat proyek -> /mulai', async () => { await btn('Buat proyek baru').click(); await page.waitForURL('**/mulai'); });

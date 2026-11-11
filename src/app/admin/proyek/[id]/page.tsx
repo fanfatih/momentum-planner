@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { AdminHeader, Denied, useRole } from "@/components/admin/shared";
 import { Icon } from "@/components/icons";
 import { ORG_NAME } from "@/components/promo";
-import { Button, buttonClass, Card, EmptyState, IconButton, SelectField, Tag, TextField, toast } from "@/components/ui";
+import { Button, buttonClass, Card, EmptyState, IconButton, Segmented, SelectField, Tag, TextField, toast } from "@/components/ui";
 import { coupleLabel, daysUntil, displayWa, formatDate, formatRp, formatShortDate, waLink } from "@/lib/format";
 import { EDIT_STATUS, LINK_STATE, REQUEST_STATUS, VENDOR_STATUS } from "@/lib/labels";
 import { TRACK_LABEL, VENDOR_CATEGORIES } from "@/lib/seed";
@@ -22,7 +22,7 @@ import {
   updateWedding,
   useApp,
 } from "@/lib/store";
-import type { EditStatus, LinkState, OrgKey, VendorStatus, Wedding } from "@/lib/types";
+import type { EditStatus, LinkState, OrgKey, Plan, VendorStatus, Wedding } from "@/lib/types";
 
 function Panel({ title, aside, children }: { title: string; aside?: React.ReactNode; children: React.ReactNode }) {
   return (
@@ -77,6 +77,30 @@ function Summary({ wedding }: { wedding: Wedding }) {
           </div>
         ))}
       </dl>
+    </Card>
+  );
+}
+
+function PlanEditor({ wedding }: { wedding: Wedding }) {
+  return (
+    <Card className="p-4">
+      <p className="max-w-[60ch] text-[15px] text-ink-soft">
+        Paket premium membuka fitur undangan digital. Aktifkan setelah pembayaran dikonfirmasi lewat WhatsApp.
+      </p>
+      <div className="mt-3 max-w-sm">
+        <Segmented<Plan>
+          label="Paket proyek"
+          value={wedding.plan}
+          onChange={(plan) => {
+            updateWedding(wedding.id, { plan });
+            toast(plan === "premium" ? "Paket premium diaktifkan." : "Paket dikembalikan ke gratis.");
+          }}
+          options={[
+            { value: "gratis", label: "Gratis" },
+            { value: "premium", label: "Premium" },
+          ]}
+        />
+      </div>
     </Card>
   );
 }
@@ -452,6 +476,12 @@ export default function ProjectDetailPage() {
           {isSuper && (
             <Panel title="Tautan organisasi">
               <LinkEditor wedding={wedding} />
+            </Panel>
+          )}
+
+          {isSuper && (
+            <Panel title="Paket proyek" aside={<Tag tone={wedding.plan === "premium" ? "leaf" : "neutral"}>{wedding.plan === "premium" ? "Premium" : "Gratis"}</Tag>}>
+              <PlanEditor wedding={wedding} />
             </Panel>
           )}
 

@@ -12,6 +12,7 @@ import type {
   AppState,
   BudgetItem,
   BudgetPayment,
+  Invitation,
   ChangeRequest,
   ChecklistEntry,
   ChecklistKind,
@@ -177,7 +178,7 @@ export function hydrate() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as AppState;
-      if (parsed && parsed.v === 1 && Array.isArray(parsed.weddings)) state = { ...parsed, payments: parsed.payments ?? [] };
+      if (parsed && parsed.v === 1 && Array.isArray(parsed.weddings)) state = { ...parsed, payments: parsed.payments ?? [], invitations: parsed.invitations ?? [] };
       else loadError = "Data tersimpan di perangkat ini tidak dikenali, jadi dimuat ulang dari data contoh.";
     }
   } catch {
@@ -256,6 +257,7 @@ export async function startNewCouple(side: CoupleSide): Promise<string | null> {
     akadDate: null,
     city: "",
     contactWa: "",
+    plan: "gratis",
     mahesa: "none",
     momentum: "none",
     wcc: { shootDate: null, status: "belum", resultLink: "" },
@@ -495,6 +497,32 @@ export function removeBudget(id: string) {
     payments: s.payments.filter((p) => p.budgetId !== id),
   }));
   sync((c) => R.deleteRows(c, "budget_items", { id }));
+}
+
+/* Undangan digital */
+
+/** Alamat undangan harus unik lintas proyek, jadi dicek dulu sebelum disimpan. */
+export async function saveInvitation(inv: Invitation): Promise<"ok" | "taken" | "error"> {
+  const client = sb;
+  if (REMOTE && client) {
+    const { data, error } = await client.rpc("slug_available", { p_slug: inv.slug, p_wedding: inv.weddingId });
+    if (error) {
+      meta = { ...meta, syncError: R.describeError(error) };
+      emit();
+      return "error";
+    }
+    if (data === false) return "taken";
+  } else if (state.invitations.some((i) => i.slug === inv.slug && i.weddingId !== inv.weddingId)) {
+    return "taken";
+  }
+  update((s) => ({
+    ...s,
+    invitations: s.invitations.some((i) => i.weddingId === inv.weddingId)
+      ? s.invitations.map((i) => (i.weddingId === inv.weddingId ? inv : i))
+      : [...s.invitations, inv],
+  }));
+  sync((c) => R.upsertRow(c, "invitations", R.toRow.invitation(inv), "wedding_id"));
+  return "ok";
 }
 
 export function addPayment(p: Omit<BudgetPayment, "id">) {

@@ -145,18 +145,18 @@ const vendors: Vendor[] = [
 const wcc0 = { shootDate: null, status: "belum" as const, resultLink: "" };
 
 const weddings: Wedding[] = [
-  { id: "w1", code: "MOM-DEMO", track: "muslim", brideName: "Aulia", groomName: "Raka", akadDate: "2027-04-17", city: "Kota Bogor", contactWa: "6280000000101", mahesa: "none", momentum: "none", wcc: wcc0, rundown: [], sample: true },
+  { id: "w1", code: "MOM-DEMO", track: "muslim", brideName: "Aulia", groomName: "Raka", akadDate: "2027-04-17", city: "Kota Bogor", contactWa: "6280000000101", plan: "gratis", mahesa: "none", momentum: "none", wcc: wcc0, rundown: [], sample: true },
   {
     id: "w2", code: "MOM-DUA2", track: "muslim", brideName: "Wanita B", groomName: "Pria B", akadDate: "2027-06-12", city: "Kota Bogor", contactWa: "6280000000102",
-    mahesa: "aktif", momentum: "none", wcc: wcc0, sample: true,
+    plan: "gratis", mahesa: "aktif", momentum: "none", wcc: wcc0, sample: true,
     rundown: [
       { id: "rd-1", time: "08:00", title: "Persiapan MUA dan busana", note: "" },
       { id: "rd-2", time: "10:00", title: "Akad nikah", note: "" },
       { id: "rd-3", time: "12:00", title: "Resepsi dimulai", note: "" },
     ],
   },
-  { id: "w3", code: "MOM-TIGA", track: "nonmuslim", brideName: "Wanita C", groomName: "Pria C", akadDate: "2027-08-21", city: "Kabupaten Bogor", contactWa: "6280000000103", mahesa: "none", momentum: "aktif", wcc: { shootDate: "2027-08-21", status: "belum", resultLink: "" }, rundown: [], sample: true },
-  { id: "w4", code: "MOM-EMP4", track: "muslim", brideName: "Wanita D", groomName: "Pria D", akadDate: "2027-09-04", city: "Depok", contactWa: "6280000000104", mahesa: "diajukan", momentum: "diajukan", wcc: wcc0, rundown: [], sample: true },
+  { id: "w3", code: "MOM-TIGA", track: "nonmuslim", brideName: "Wanita C", groomName: "Pria C", akadDate: "2027-08-21", city: "Kabupaten Bogor", contactWa: "6280000000103", plan: "gratis", mahesa: "none", momentum: "aktif", wcc: { shootDate: "2027-08-21", status: "belum", resultLink: "" }, rundown: [], sample: true },
+  { id: "w4", code: "MOM-EMP4", track: "muslim", brideName: "Wanita D", groomName: "Pria D", akadDate: "2027-09-04", city: "Depok", contactWa: "6280000000104", plan: "gratis", mahesa: "diajukan", momentum: "diajukan", wcc: wcc0, rundown: [], sample: true },
 ];
 
 const budget: BudgetItem[] = [
@@ -211,6 +211,7 @@ export function seedState(): AppState {
     weddingVendors: structuredClone(weddingVendors),
     budget: structuredClone(budget),
     payments: structuredClone(payments),
+    invitations: [],
     guests: structuredClone(guests),
     promos: structuredClone(promos),
     dismissed: {},

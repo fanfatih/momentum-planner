@@ -1,3 +1,4 @@
+import { emptyInvitationContent } from "./invitation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { DEFAULT_SETTINGS } from "./seed";
 import type {
@@ -5,6 +6,8 @@ import type {
   AppState,
   BudgetItem,
   BudgetPayment,
+  Invitation,
+  InvitationContent,
   ChangeRequest,
   ChecklistEntry,
   ChecklistTemplate,
@@ -43,6 +46,7 @@ export function emptyState(): AppState {
     weddingVendors: [],
     budget: [],
     payments: [],
+    invitations: [],
     guests: [],
     promos: [],
     dismissed: {},
@@ -84,6 +88,7 @@ export async function loadSnapshot(sb: SupabaseClient, userId: string): Promise<
     weddingVendors,
     budget,
     payments,
+    invitationRows,
     guests,
     favorites,
     requests,
@@ -103,6 +108,7 @@ export async function loadSnapshot(sb: SupabaseClient, userId: string): Promise<
     all(sb, "wedding_vendors"),
     all(sb, "budget_items"),
     all(sb, "budget_payments"),
+    all(sb, "invitations"),
     all(sb, "guests"),
     all(sb, "favorites"),
     all(sb, "change_requests"),
@@ -137,6 +143,7 @@ export async function loadSnapshot(sb: SupabaseClient, userId: string): Promise<
       akadDate: w.akad_date ? s(w.akad_date) : null,
       city: s(w.city),
       contactWa: s(w.contact_wa),
+      plan: s(w.plan) === "premium" ? "premium" : "gratis",
       mahesa: state("mahesa"),
       momentum: state("momentum"),
       wcc: {
@@ -249,6 +256,15 @@ export async function loadSnapshot(sb: SupabaseClient, userId: string): Promise<
           paid: n(x.paid),
         }),
       ),
+      invitations: invitationRows.map(
+        (x): Invitation => ({
+          weddingId: s(x.wedding_id),
+          slug: s(x.slug),
+          theme: s(x.theme),
+          published: x.published === true,
+          content: { ...emptyInvitationContent(), ...((x.content as Partial<InvitationContent>) ?? {}) },
+        }),
+      ),
       payments: payments.map(
         (x): BudgetPayment => ({
           id: s(x.id),
@@ -340,6 +356,14 @@ export const toRow = {
     planned: x.planned,
     actual: x.actual,
     // paid sengaja tidak dikirim: dijaga trigger database dari riwayat pembayaran.
+  }),
+  invitation: (x: Invitation) => ({
+    wedding_id: x.weddingId,
+    slug: x.slug,
+    theme: x.theme,
+    published: x.published,
+    content: x.content,
+    updated_at: new Date().toISOString(),
   }),
   payment: (x: BudgetPayment) => ({
     id: x.id,
@@ -448,6 +472,7 @@ export function weddingPatchRow(p: Partial<Wedding>): Record<string, unknown> {
   if (p.akadDate !== undefined) out.akad_date = p.akadDate || null;
   if (p.city !== undefined) out.city = p.city;
   if (p.contactWa !== undefined) out.contact_wa = p.contactWa;
+  if (p.plan !== undefined) out.plan = p.plan;
   return out;
 }
 

@@ -101,3 +101,16 @@ export function priceRange(min: number | null, max: number | null): string {
   if (max) return `Hingga ${formatRp(max)}`;
   return "Harga belum diisi";
 }
+
+/** Ubah nama jadi alamat url: huruf kecil, angka, dan tanda hubung. */
+export function slugify(input: string): string {
+  return input
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/&/g, " ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40)
+    .replace(/-+$/g, "");
+}

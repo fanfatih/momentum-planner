@@ -10,6 +10,7 @@ export type GuestStatus = "belum" | "diundang" | "hadir" | "tidak_hadir";
 export type ChecklistKind = "administrasi" | "acara";
 export type PromoTrigger = "beranda" | "ceklis-wo" | "ceklis-dokumentasi";
 export type RequestStatus = "menunggu" | "disetujui" | "ditolak";
+export type Plan = "gratis" | "premium";
 
 export interface Session {
   role: Role;
@@ -32,6 +33,7 @@ export interface Wedding {
   akadDate: string | null;
   city: string;
   contactWa: string;
+  plan: Plan;
   mahesa: LinkState;
   momentum: LinkState;
   wcc: { shootDate: string | null; status: EditStatus; resultLink: string };
@@ -106,6 +108,41 @@ export interface BudgetItem {
   planned: number;
   actual: number;
   paid: number;
+}
+
+export interface InvitationEvent {
+  date: string;
+  time: string;
+  place: string;
+  address: string;
+  mapsQuery: string;
+}
+
+export interface InvitationGift {
+  bank: string;
+  number: string;
+  holder: string;
+}
+
+export interface InvitationContent {
+  brideFull: string;
+  groomFull: string;
+  brideParents: string;
+  groomParents: string;
+  opening: string;
+  closing: string;
+  akad: InvitationEvent;
+  hasResepsi: boolean;
+  resepsi: InvitationEvent;
+  gifts: InvitationGift[];
+}
+
+export interface Invitation {
+  weddingId: string;
+  slug: string;
+  theme: string;
+  published: boolean;
+  content: InvitationContent;
 }
 
 export type Payer = "bride" | "groom";
@@ -183,6 +220,7 @@ export interface AppState {
   weddingVendors: WeddingVendor[];
   budget: BudgetItem[];
   payments: BudgetPayment[];
+  invitations: Invitation[];
   guests: Guest[];
   promos: PromoCard[];
   dismissed: Record<string, string>;
