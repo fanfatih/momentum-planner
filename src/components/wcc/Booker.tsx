@@ -5,7 +5,8 @@ import { cx, SelectField, TextField } from "@/components/ui";
 import { formatRp } from "@/lib/format";
 import { availableStarts, dayStatus, fmtMin, fmtRange, toMin, type DayStatus, type Slot } from "@/lib/wcc-schedule";
 import { wccBusy, type WccBusy, type WccPublic } from "@/lib/wcc";
-import { iso, MonthGrid, STATUS_LABEL } from "./MonthGrid";
+import { MonthGrid, STATUS_LABEL } from "./MonthGrid";
+import { Price } from "./Price";
 
 const AREAS = [
   { id: "kota", label: "Kota Bogor", fee: 0 },
@@ -151,7 +152,7 @@ export function Booker({ data }: { data: WccPublic }) {
                 <input type="radio" name="paket" className="sr-only" checked={pkgId === p.id} onChange={() => setPkgId(p.id)} />
                 <span className="font-semibold">{p.name}</span>
                 <span className="text-[14px] text-ink-soft">{p.hours} jam</span>
-                <span className="mt-1 font-semibold text-brand-deep">{formatRp(p.price)}</span>
+                <Price className="mt-1 font-semibold text-brand-deep" price={p.price} old={p.old_price} />
               </label>
             ))}
           </div>
@@ -179,10 +180,7 @@ export function Booker({ data }: { data: WccPublic }) {
                         <p className="m-0 text-[13px] text-ink-soft">{a.note || "Per jam"}</p>
                       </div>
                     )}
-                    <span className="shrink-0 text-[14px] font-semibold">
-                      {formatRp(a.price)}
-                      {a.unit === "per_jam" ? "/jam" : ""}
-                    </span>
+                    <Price className="shrink-0 text-[14px] font-semibold" price={a.price} old={a.old_price} unit={a.unit === "per_jam" ? "/jam" : ""} />
                     {a.unit === "per_jam" && (
                       <span className="inline-flex shrink-0 items-center gap-1" role="group" aria-label={`Jumlah ${a.name}`}>
                         <button type="button" aria-label={`Kurangi ${a.name}`} disabled={q === 0} onClick={() => step(a.id, -1)} className="size-11 rounded-[10px] border border-line text-lg">

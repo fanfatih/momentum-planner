@@ -96,6 +96,7 @@ function PackageForm({ p, rows, close }: { p: WccPackage | null; rows: WccPackag
   const [name, setName] = useState(p?.name ?? "");
   const [hours, setHours] = useState(String(p?.hours ?? 3));
   const [price, setPrice] = useState(String(p?.price ?? ""));
+  const [oldPrice, setOldPrice] = useState(p?.old_price ? String(p.old_price) : "");
   const [features, setFeatures] = useState((p?.features ?? []).join("\n"));
   const [highlight, setHighlight] = useState(p?.highlight ?? false);
   const [active, setActive] = useState(p?.active ?? true);
@@ -112,9 +113,11 @@ function PackageForm({ p, rows, close }: { p: WccPackage | null; rows: WccPackag
         if (!name.trim()) er.name = "Isi nama paket.";
         if (!Number.isInteger(h) || h < 1 || h > 24) er.hours = "Durasi 1 sampai 24 jam.";
         if (!Number.isFinite(pr) || pr < 0 || price === "") er.price = "Isi harga dalam rupiah.";
+        const op = oldPrice === "" ? null : Number(oldPrice);
+        if (op !== null && (!Number.isFinite(op) || op <= pr)) er.old = "Harga coret harus lebih besar dari harga jual.";
         setErr(er);
         if (Object.keys(er).length) return;
-        const m = await wccSave("packages", { id: p?.id, name: name.trim(), hours: h, price: pr, features: lines(features), highlight, active, sort: p?.sort ?? nextSort(rows) });
+        const m = await wccSave("packages", { id: p?.id, name: name.trim(), hours: h, price: pr, old_price: op, features: lines(features), highlight, active, sort: p?.sort ?? nextSort(rows) });
         if (m) return toast(m);
         toast("Paket disimpan.");
         close();
@@ -125,6 +128,7 @@ function PackageForm({ p, rows, close }: { p: WccPackage | null; rows: WccPackag
         <TextField label="Durasi (jam)" type="number" inputMode="numeric" min={1} max={24} value={hours} error={err.hours} onChange={(e) => setHours(e.target.value)} />
         <TextField label="Harga (Rp)" type="number" inputMode="numeric" min={0} value={price} error={err.price} onChange={(e) => setPrice(e.target.value)} />
       </div>
+      <TextField label="Harga coret (opsional)" hint="Harga normal sebelum diskon. Kosongkan kalau tidak ada promo." type="number" inputMode="numeric" min={0} value={oldPrice} error={err.old} onChange={(e) => setOldPrice(e.target.value)} />
       <TextAreaField label="Isi paket" hint="Satu baris satu poin." rows={6} value={features} onChange={(e) => setFeatures(e.target.value)} />
       <Check label="Tandai sebagai paket andalan" checked={highlight} onChange={setHighlight} />
       <Check label="Tampilkan di landing page" checked={active} onChange={setActive} />
@@ -150,7 +154,10 @@ export function PackagesPanel({ data, reload }: { data: WccAdminData; reload: ()
           <p className="m-0 font-semibold">
             {p.name} <span className="font-normal text-ink-soft">{p.hours} jam</span>
           </p>
-          <p className="m-0 text-[15px]">{formatRp(p.price)}</p>
+          <p className="m-0 text-[15px]">
+            {p.old_price ? <s className="mr-2 text-ink-soft">{formatRp(p.old_price)}</s> : null}
+            {formatRp(p.price)}
+          </p>
           <p className="m-0 mt-1 flex gap-2">
             {p.highlight && <Tag tone="brand">Andalan</Tag>}
             {!p.active && <Tag>Disembunyikan</Tag>}
@@ -165,6 +172,7 @@ export function PackagesPanel({ data, reload }: { data: WccAdminData; reload: ()
 function AddonForm({ a, rows, close }: { a: WccAddon | null; rows: WccAddon[]; close: () => void }) {
   const [name, setName] = useState(a?.name ?? "");
   const [price, setPrice] = useState(String(a?.price ?? ""));
+  const [oldPrice, setOldPrice] = useState(a?.old_price ? String(a.old_price) : "");
   const [unit, setUnit] = useState<WccAddon["unit"]>(a?.unit ?? "sekali");
   const [note, setNote] = useState(a?.note ?? "");
   const [active, setActive] = useState(a?.active ?? true);
@@ -179,9 +187,11 @@ function AddonForm({ a, rows, close }: { a: WccAddon | null; rows: WccAddon[]; c
         const er: Record<string, string> = {};
         if (!name.trim()) er.name = "Isi nama add-on.";
         if (!Number.isFinite(pr) || pr < 0 || price === "") er.price = "Isi harga dalam rupiah.";
+        const op = oldPrice === "" ? null : Number(oldPrice);
+        if (op !== null && (!Number.isFinite(op) || op <= pr)) er.old = "Harga coret harus lebih besar dari harga jual.";
         setErr(er);
         if (Object.keys(er).length) return;
-        const m = await wccSave("addons", { id: a?.id, name: name.trim(), price: pr, unit, note: note.trim(), active, sort: a?.sort ?? nextSort(rows) });
+        const m = await wccSave("addons", { id: a?.id, name: name.trim(), price: pr, old_price: op, unit, note: note.trim(), active, sort: a?.sort ?? nextSort(rows) });
         if (m) return toast(m);
         toast("Add-on disimpan.");
         close();
@@ -189,6 +199,7 @@ function AddonForm({ a, rows, close }: { a: WccAddon | null; rows: WccAddon[]; c
     >
       <TextField label="Nama add-on" value={name} error={err.name} onChange={(e) => setName(e.target.value)} />
       <TextField label="Harga (Rp)" type="number" inputMode="numeric" min={0} value={price} error={err.price} onChange={(e) => setPrice(e.target.value)} />
+      <TextField label="Harga coret (opsional)" hint="Harga normal sebelum diskon." type="number" inputMode="numeric" min={0} value={oldPrice} error={err.old} onChange={(e) => setOldPrice(e.target.value)} />
       <SelectField label="Cara hitung" hint="Per jam: harga dikali jumlah jam dan menambah durasi acara di kalender." value={unit} onChange={(e) => setUnit(e.target.value as WccAddon["unit"])}>
         <option value="sekali">Sekali (harga tetap)</option>
         <option value="per_jam">Per jam (menambah durasi)</option>
@@ -216,6 +227,7 @@ export function AddonsPanel({ data, reload }: { data: WccAdminData; reload: () =
         <>
           <p className="m-0 font-semibold">{a.name}</p>
           <p className="m-0 text-[15px]">
+            {a.old_price ? <s className="mr-2 text-ink-soft">{formatRp(a.old_price)}</s> : null}
             {formatRp(a.price)}
             {a.unit === "per_jam" ? " per jam" : ""}
           </p>

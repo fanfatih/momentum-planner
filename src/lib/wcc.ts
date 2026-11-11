@@ -6,6 +6,8 @@ export interface WccPackage {
   name: string;
   hours: number;
   price: number;
+  /** Harga sebelum diskon, tampil dicoret. Kosong berarti tanpa coretan. */
+  old_price?: number | null;
   features: string[];
   highlight: boolean;
   active: boolean;
@@ -17,6 +19,7 @@ export interface WccAddon {
   name: string;
   price: number;
   unit: "sekali" | "per_jam";
+  old_price?: number | null;
   note: string;
   active: boolean;
   sort: number;

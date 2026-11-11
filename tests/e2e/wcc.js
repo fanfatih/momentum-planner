@@ -49,9 +49,29 @@ const step = async (name, fn) => { try { const r = await fn(); if (r === false) 
     }
   });
 
+  await step('admin WCC: harga coret harus lebih besar dari harga jual', async () => {
+    await page.getByText('Paket', { exact: true }).first().click();
+    await page.getByRole('button', { name: 'Ubah Intimate' }).click();
+    const d = page.locator('dialog[open]');
+    await d.getByLabel('Harga coret (opsional)').fill('200000');
+    await d.getByRole('button', { name: 'Simpan paket' }).click();
+    return d.getByText('Harga coret harus lebih besar dari harga jual.').isVisible();
+  });
+  await step('admin WCC: simpan harga coret 300.000', async () => {
+    const d = page.locator('dialog[open]');
+    await d.getByLabel('Harga coret (opsional)').fill('300000');
+    await d.getByRole('button', { name: 'Simpan paket' }).click();
+    await page.waitForTimeout(300);
+    return (await page.locator('dialog[open]').count()) === 0;
+  });
+
   await page.goto(BASE + '/wcc');
   await page.locator('#booking').waitFor();
   await step('landing: paket dan harga tampil', async () => page.getByRole('heading', { name: 'Signature' }).first().isVisible());
+  await step('landing: harga coret dan persen hemat tampil di paket', async () => {
+    const card = page.locator('article', { hasText: 'Intimate' });
+    return (await card.locator('s').innerText()).includes('300.000') && (await card.getByText('Hemat 17%').isVisible());
+  });
   await step('landing: tanggal terisi sebagian, jam 13.00 bisa dipilih, 12.30 tidak (paket 3 jam)', async () => {
     await page.getByRole('radio', { name: /Intimate/ }).check({ force: true });
     const cell = page.locator(`[data-date="${target}"]`);

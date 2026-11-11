@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { formatRp } from "@/lib/format";
 import { wccPublic, type WccPublic } from "@/lib/wcc";
 import { Booker } from "./Booker";
+import { Price } from "./Price";
 
 const sec = "mx-auto w-full max-w-[1080px] px-4 py-14 sm:px-6 sm:py-20";
 const eyebrowless = "m-0 text-[clamp(28px,4.5vw,42px)]";
@@ -64,7 +65,7 @@ export function Landing() {
           <div>
             <h1 className="m-0 text-[clamp(38px,7vw,68px)] leading-[1.02]">{s.tagline}</h1>
             <p className="mb-0 mt-5 max-w-[46ch] text-[18px] text-ink-soft">
-              Wedding content creator di Bogor. Kami meliput acaramu jadi story real-time, reels, dan highlight yang siap kamu bagikan, mulai {packages[0] ? formatRp(packages[0].price) : "250 ribu"}.
+              Wedding content creator di Bogor. Kami meliput acaramu jadi story real-time, reels, dan highlight yang siap kamu bagikan, mulai {packages.length ? formatRp(Math.min(...packages.map((p) => p.price))) : "250 ribu"}.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <a href="#booking" className="inline-flex min-h-12 items-center rounded-full bg-[var(--brand)] px-6 font-semibold text-white">
@@ -117,13 +118,15 @@ export function Landing() {
             Paket dan harga
           </h2>
           <p className="mb-8 mt-2 text-ink-soft">Semua paket memakai mic dan lighting, hasil dikirim lewat Google Drive.</p>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-3">
             {packages.map((p) => (
               <article key={p.id} className={`flex flex-col rounded-[20px] border-2 bg-paper p-5 ${p.highlight ? "border-[var(--brand)]" : "border-line"}`}>
                 {p.highlight && <p className="m-0 mb-2 w-fit rounded-full bg-brand-tint px-3 py-0.5 text-[13px] font-semibold text-brand-deep">Paling banyak dipilih</p>}
                 <h3 className="m-0 text-[24px]">{p.name}</h3>
                 <p className="m-0 text-ink-soft">{p.hours} jam liputan</p>
-                <p className="m-0 my-3 font-[family-name:var(--font-serif)] text-[32px] font-semibold">{formatRp(p.price)}</p>
+                <p className="m-0 my-3 font-[family-name:var(--font-serif)] text-[30px] font-semibold leading-tight">
+                  <Price price={p.price} old={p.old_price} />
+                </p>
                 <ul className="m-0 flex-1 list-none space-y-1.5 p-0 text-[15px]">
                   {p.features.map((f) => (
                     <li key={f} className="flex gap-2">
@@ -148,10 +151,7 @@ export function Landing() {
                       {a.name}
                       {a.note && <span className="block text-[13px] text-ink-soft">{a.note}</span>}
                     </span>
-                    <span className="shrink-0 font-semibold">
-                      {formatRp(a.price)}
-                      {a.unit === "per_jam" ? "/jam" : ""}
-                    </span>
+                    <Price className="shrink-0 text-right font-semibold" price={a.price} old={a.old_price} unit={a.unit === "per_jam" ? "/jam" : ""} />
                   </li>
                 ))}
               </ul>
