@@ -6,6 +6,7 @@ import {
   Button,
   Chip,
   cx,
+  IconButton,
   EmptyState,
   ProgressBar,
   Reveal,
@@ -16,11 +17,15 @@ import {
   TextField,
   toast,
 } from "@/components/ui";
+import { Icon } from "@/components/icons";
 import { formatShortDate } from "@/lib/format";
 import { useCurrentWedding } from "@/lib/guard";
 import { TRACK_LABEL, TRACK_NOTES } from "@/lib/seed";
 import { addCustomEntry, buildChecklist, patchEntry, patchRow, removeEntry, useApp, type ChecklistRow } from "@/lib/store";
 import type { ChecklistKind } from "@/lib/types";
+
+/** Grup yang tidak berlaku untuk semua pasangan, jadi tertutup dulu. */
+const COLLAPSED_BY_DEFAULT = new Set(["Kondisi khusus"]);
 
 const KIND_OPTIONS: { value: ChecklistKind; label: string }[] = [
   { value: "administrasi", label: "Administrasi" },
@@ -71,11 +76,11 @@ function RowForm({ weddingId, row, onClose }: { weddingId: string; row: Checklis
         icon={row.hidden ? "eye" : "eyeOff"}
         onClick={() => {
           patchRow(weddingId, row, { hidden: !row.hidden });
-          toast(row.hidden ? "Item ditampilkan lagi." : "Item disembunyikan dari daftar.");
+          toast(row.hidden ? "Item ditampilkan lagi." : "Item dihapus dari daftar.");
           onClose();
         }}
       >
-        {row.hidden ? "Tampilkan lagi di daftar" : "Sembunyikan, tidak berlaku untuk kami"}
+        {row.hidden ? "Tampilkan lagi di daftar" : "Hapus dari daftar, tidak berlaku untuk kami"}
       </Button>
       {row.custom && row.entryId && (
         <Button
@@ -146,6 +151,7 @@ export default function CeklisPage() {
   const [showHidden, setShowHidden] = useState(false);
   const [editKey, setEditKey] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
   const all = useMemo(
     () => (wedding ? buildChecklist(templates, entries, wedding.id, wedding.track) : []),
@@ -166,6 +172,16 @@ export default function CeklisPage() {
   }, []);
 
   const editing = all.find((r) => r.key === editKey) ?? null;
+
+  const removeRow = (r: ChecklistRow) => {
+    if (r.custom && r.entryId) {
+      removeEntry(r.entryId);
+      toast("Item dihapus.");
+    } else {
+      patchRow(wedding.id, r, { hidden: true });
+      toast("Item dihapus dari daftar. Bisa dimunculkan lagi lewat Lihat item tersembunyi.");
+    }
+  };
 
   return (
     <>
@@ -201,15 +217,32 @@ export default function CeklisPage() {
           }
         />
       ) : (
-        groups.map((g, gi) => (
+        groups.map((g, gi) => {
+          const gkey = `${kind}:${g.name}`;
+          const isOpen = openGroups[gkey] ?? !COLLAPSED_BY_DEFAULT.has(g.name);
+          const panelId = `grup-${gi}`;
+          return (
           <Reveal key={g.name} i={gi} className="pt-5">
-            <div className="flex items-baseline justify-between gap-3 px-5">
-              <h2 className="text-[19px]">{g.name}</h2>
-              <p className="shrink-0 text-sm text-ink-soft">
+            <button
+              type="button"
+              aria-expanded={isOpen}
+              aria-controls={panelId}
+              onClick={() => setOpenGroups({ ...openGroups, [gkey]: !isOpen })}
+              className="flex min-h-11 w-full items-center justify-between gap-3 px-5 text-left transition-colors duration-150 hover:bg-cream-deep active:bg-line"
+            >
+              <span className="min-w-0">
+                <span className="block text-[19px] font-semibold leading-snug text-ink">{g.name}</span>
+                {!isOpen && COLLAPSED_BY_DEFAULT.has(g.name) && (
+                  <span className="block text-[13px] text-ink-soft">Buka kalau ada yang berlaku untuk kalian</span>
+                )}
+              </span>
+              <span className="flex shrink-0 items-center gap-1.5 text-sm text-ink-soft">
                 {g.rows.filter((r) => r.done).length}/{g.rows.length}
-              </p>
-            </div>
-            <ul className="mt-1 px-2">
+                <Icon name="chevronDown" size={18} className={cx("transition-transform duration-150", isOpen && "rotate-180")} />
+              </span>
+            </button>
+            {isOpen && (
+            <ul id={panelId} className="mt-1 px-2">
               {g.rows.map((r) => (
                 <li key={r.key}>
                   <div className="flex items-start gap-1">
@@ -236,12 +269,26 @@ export default function CeklisPage() {
                         </span>
                       )}
                     </button>
+                    {r.hidden ? (
+                      <IconButton
+                        icon="eye"
+                        label={`Tampilkan lagi: ${r.title}`}
+                        onClick={() => {
+                          patchRow(wedding.id, r, { hidden: false });
+                          toast("Item ditampilkan lagi.");
+                        }}
+                      />
+                    ) : (
+                      <IconButton icon="trash" label={`Hapus dari daftar: ${r.title}`} onClick={() => removeRow(r)} />
+                    )}
                   </div>
                 </li>
               ))}
             </ul>
+            )}
           </Reveal>
-        ))
+          );
+        })
       )}
 
       {groups.length > 0 && (

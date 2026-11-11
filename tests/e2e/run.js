@@ -68,7 +68,7 @@ const step = async (name, fn) => { try { const r = await fn(); log(r !== false, 
   await step('nav bawah: Ceklis', async () => { await nav('Ceklis'); await page.waitForURL('**/ceklis'); return (await page.getByRole('link', { name: 'Ceklis' }).getAttribute('aria-current')) === 'page'; });
   await step('ceklis: centang item', async () => { const c = page.getByRole('checkbox', { checked: false }).first(); const label = await c.getAttribute('aria-label'); await c.click(); return (await page.getByRole('checkbox', { name: label }).getAttribute('aria-checked')) === 'true'; });
   await step('ceklis: buka detail, simpan catatan', async () => {
-    await btn('Fotokopi akta kelahiran', false).click(); await dialog().waitFor();
+    await btn('Fotokopi akta kelahiran', false).first().click(); await dialog().waitFor();
     await dialog().getByLabel('Catatan (opsional)').fill('Bawa aslinya'); await dialog().getByRole('button', { name: 'Simpan item' }).click();
     await page.waitForTimeout(200); return await page.getByText('Ada catatan').first().isVisible();
   });
@@ -80,9 +80,26 @@ const step = async (name, fn) => { try { const r = await fn(); log(r !== false, 
     await page.waitForTimeout(200); return err && await page.getByText('Pesan suvenir uji').isVisible();
   });
   await step('ceklis: sembunyikan item -> chip item tersembunyi', async () => {
-    await btn('Anggota TNI atau Polri', false).click(); await dialog().waitFor();
-    await dialog().getByRole('button', { name: /Sembunyikan/ }).click(); await page.waitForTimeout(200);
+    await page.getByRole('button', { name: /Kondisi khusus/ }).click(); await page.waitForTimeout(150);
+    await btn('Anggota TNI atau Polri', false).first().click(); await dialog().waitFor();
+    await dialog().getByRole('button', { name: /Hapus dari daftar/ }).click(); await page.waitForTimeout(200);
     return await btn('Lihat 1 item tersembunyi').isVisible();
+  });
+  await step('ceklis: tombol hapus di baris menyembunyikan item default, bisa ditampilkan lagi', async () => {
+    await btn('Lihat 1 item tersembunyi').click();
+    await page.getByRole('button', { name: /^Tampilkan lagi: / }).first().click(); await page.waitForTimeout(200);
+    const before = (await page.getByRole('button', { name: /^Hapus dari daftar: / }).count());
+    await page.getByRole('button', { name: /^Hapus dari daftar: / }).first().click(); await page.waitForTimeout(200);
+    return before > 0 && await page.getByText(/Lihat 1 item tersembunyi|Sembunyikan lagi/).first().isVisible();
+  });
+  await step('ceklis: grup Kondisi khusus tertutup, bisa dibuka dan ditutup', async () => {
+    await page.reload(); await page.waitForTimeout(800);
+    const head = page.getByRole('button', { name: /Kondisi khusus/ });
+    const closed = (await head.getAttribute('aria-expanded')) === 'false' && (await page.getByText('Duda atau janda cerai').count()) === 0;
+    await head.click(); await page.waitForTimeout(150);
+    const opened = await page.getByText('Duda atau janda cerai: akta cerai').first().isVisible();
+    await head.click();
+    return closed && opened;
   });
   await step('ceklis: tab Persiapan acara + popup WO', async () => { await btn('Persiapan acara').click(); await page.getByRole('heading', { name: 'Belum punya WO?' }).waitFor(); });
   await page.waitForTimeout(500);
