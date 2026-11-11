@@ -209,6 +209,7 @@ export function RsvpForm({
           {error}
         </p>
       )}
+      <p className="m-0 text-[13px] text-ink-soft">Nama dan ucapanmu bisa dilihat oleh pengantin dan tamu lain di daftar ucapan.</p>
       <Button type="submit" block disabled={busy || preview}>
         {preview ? "Pratinjau: pengiriman dimatikan" : busy ? "Mengirim" : "Kirim konfirmasi"}
       </Button>

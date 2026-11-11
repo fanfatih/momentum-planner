@@ -470,6 +470,15 @@ const step = async (name, fn) => { try { const r = await fn(); log(r !== false, 
     return idle && on && paused && imgs === 3 && loaded && (await overflow()) <= 0;
   });
   await page.screenshot({ path: 'tests/e2e/shots/16-undangan.png', fullPage: true });
+  await step('privasi dan ketentuan: halaman terbuka tanpa login, saling tertaut, tanpa overflow', async () => {
+    await page.goto(BASE + '/privasi'); await page.getByRole('heading', { name: 'Kebijakan privasi', level: 1 }).waitFor();
+    const a = (await overflow()) <= 0 && await page.getByText('tidak memakai pelacak iklan pihak ketiga').isVisible();
+    await page.getByRole('navigation', { name: 'Dokumen lain' }).getByRole('link', { name: 'Ketentuan layanan' }).click();
+    await page.getByRole('heading', { name: 'Ketentuan layanan', level: 1 }).waitFor();
+    const b = (await overflow()) <= 0;
+    await page.goto(BASE + '/u/aulia-raka-bogor?to=Budi%20Santoso'); await page.getByRole('heading', { name: 'Konfirmasi kehadiran' }).waitFor();
+    return a && b && await page.getByRole('link', { name: 'Privasi', exact: true }).isVisible() && await page.getByText(/dilihat oleh pengantin dan tamu lain/).isVisible();
+  });
   await step('undangan publik: RSVP wajib nama, lalu terkirim dan ucapan tampil', async () => {
     await page.getByLabel('Nama', { exact: true }).fill(''); await btn('Kirim konfirmasi').click();
     const err = await page.getByText('Isi namamu dulu.').isVisible();

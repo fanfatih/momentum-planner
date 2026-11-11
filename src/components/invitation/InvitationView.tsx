@@ -419,7 +419,17 @@ export function InvitationView({
         </Section>
       </div>
 
-      <footer className="inv-footer">Dibuat dengan Momentum Planner</footer>
+      <footer className="inv-footer">
+        Dibuat dengan Momentum Planner
+        {!preview && (
+          <>
+            {" "}
+            <a href="/privasi" className="underline underline-offset-4">
+              Privasi
+            </a>
+          </>
+        )}
+      </footer>
       <MusicDock url={c.musicUrl ?? ""} title={c.musicTitle ?? ""} music={music} />
     </main>
     </OpenContext.Provider>
