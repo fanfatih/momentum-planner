@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { PromoCardView, usePromo } from "@/components/promo";
 import { CheckToggle, PageHeader } from "@/components/shell";
 import {
   Button,
@@ -143,8 +142,6 @@ export default function CeklisPage() {
   const wedding = useCurrentWedding();
   const templates = useApp((s) => s.templates);
   const entries = useApp((s) => s.checklist);
-  const promoWo = usePromo("ceklis-wo", wedding);
-  const promoDok = usePromo("ceklis-dokumentasi", wedding);
   const [kind, setKind] = useState<ChecklistKind>("administrasi");
   const [showHidden, setShowHidden] = useState(false);
   const [editKey, setEditKey] = useState<string | null>(null);
@@ -168,9 +165,6 @@ export default function CeklisPage() {
     return acc;
   }, []);
 
-  // Hanya satu kartu promo per layar: baris pertama yang belum selesai dan punya pemicu.
-  const promoRow = rows.find((r) => !r.done && ((r.promo === "ceklis-wo" && promoWo) || (r.promo === "ceklis-dokumentasi" && promoDok)));
-  const inlinePromo = promoRow?.promo === "ceklis-wo" ? promoWo : promoRow ? promoDok : null;
   const editing = all.find((r) => r.key === editKey) ?? null;
 
   return (
@@ -243,11 +237,6 @@ export default function CeklisPage() {
                       )}
                     </button>
                   </div>
-                  {inlinePromo && promoRow?.key === r.key && (
-                    <div className="px-3 pb-2 pt-1">
-                      <PromoCardView promo={inlinePromo} wedding={wedding} compact />
-                    </div>
-                  )}
                 </li>
               ))}
             </ul>

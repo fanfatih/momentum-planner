@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 import { BottomNav, DemoRibbon, StorageNotice } from "@/components/shell";
+import { PromoPopup } from "@/components/promo";
 import { LoadingState } from "@/components/ui";
 import { COUPLE_ROLES, useCurrentWedding, useGuard } from "@/lib/guard";
 
@@ -32,6 +33,7 @@ export default function CoupleLayout({ children }: { children: ReactNode }) {
           <LoadingState what="proyek pernikahanmu" />
         </main>
       )}
+      {show && !onboarding && wedding && <PromoPopup wedding={wedding} />}
       {show && !onboarding && <BottomNav />}
     </div>
   );

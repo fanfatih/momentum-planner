@@ -44,7 +44,18 @@ const step = async (name, fn) => { try { const r = await fn(); log(r !== false, 
     await page.keyboard.press('Escape'); await page.waitForTimeout(200);
     return (await dialog().count()) === 0 && href.startsWith('https://wa.me/6280000000000?text=') ? 'href wa.me ok' : false;
   });
-  await step('beranda: tutup promo Mahesa -> promo WCC muncul', async () => { await btn('Tutup iklan ini selama 7 hari').click(); return await page.getByRole('heading', { name: 'Hari-H jadi reels' }).isVisible(); });
+  await step('beranda: popup melayang di atas menu bawah', async () => {
+    const pop = page.getByRole('complementary', { name: 'Iklan Mahesa Weddings' });
+    const [a, n] = await Promise.all([pop.boundingBox(), page.getByRole('navigation', { name: 'Menu utama' }).boundingBox()]);
+    return a.y + a.height <= n.y + 0.5 ? 'tidak menimpa menu' : false;
+  });
+  await step('beranda: tutup popup Mahesa -> popup WCC muncul beberapa detik kemudian', async () => { await btn('Tutup iklan ini').click(); await page.getByRole('heading', { name: 'Hari-H jadi reels' }).waitFor({ timeout: 12000 }); });
+  await step('beranda: centang "tidak tampil hari ini" menyembunyikan, tetap hilang setelah muat ulang', async () => {
+    await page.getByLabel('Jangan tampilkan lagi hari ini').check(); await page.waitForTimeout(900);
+    const gone = (await page.getByRole('heading', { name: 'Hari-H jadi reels' }).count()) === 0;
+    await page.reload(); await page.waitForTimeout(2600);
+    return gone && (await page.getByRole('heading', { name: 'Hari-H jadi reels' }).count()) === 0;
+  });
   await step('beranda: centang item ceklis mengubah hitungan', async () => {
     const before = await page.getByText(/dari \d+ selesai/).first().textContent();
     await page.getByRole('checkbox').first().click(); await page.waitForTimeout(150);
@@ -73,10 +84,10 @@ const step = async (name, fn) => { try { const r = await fn(); log(r !== false, 
     await dialog().getByRole('button', { name: /Sembunyikan/ }).click(); await page.waitForTimeout(200);
     return await btn('Lihat 1 item tersembunyi').isVisible();
   });
-  await step('ceklis: tab Persiapan acara + promo inline WO', async () => { await btn('Persiapan acara').click(); return await page.getByRole('heading', { name: 'Belum punya WO?' }).isVisible(); });
+  await step('ceklis: tab Persiapan acara + popup WO', async () => { await btn('Persiapan acara').click(); await page.getByRole('heading', { name: 'Belum punya WO?' }).waitFor(); });
   await page.waitForTimeout(500);
   await shot('03-ceklis');
-  await step('ceklis: ajukan paket Mahesa dari promo inline', async () => {
+  await step('ceklis: ajukan paket Mahesa dari popup', async () => {
     await btn('Ajukan Paket Mahesa').click(); await dialog().waitFor();
     await dialog().getByRole('link', { name: 'Kirim lewat WhatsApp' }).click(); await page.waitForTimeout(300);
     return (await page.getByRole('heading', { name: 'Belum punya WO?' }).count()) === 0;

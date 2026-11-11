@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { usePathname } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { coupleLabel, formatDate, isDummyWa, waLink } from "@/lib/format";
-import { createRequest, dismissPromo, setLink, useApp } from "@/lib/store";
-import type { OrgKey, PromoCard, PromoTrigger, Wedding } from "@/lib/types";
+import { buildChecklist, createRequest, dismissPromo, setLink, useApp } from "@/lib/store";
+import type { OrgKey, PromoCard, Wedding } from "@/lib/types";
 import { Button, buttonClass, cx, IconButton, Notice, Sheet, Tag, TextAreaField, toast } from "./ui";
-
-const SNOOZE_MS = 7 * 86_400_000;
 
 export const ORG_NAME: Record<OrgKey, string> = {
   mahesa: "Mahesa Weddings",
@@ -15,22 +15,136 @@ export const ORG_NAME: Record<OrgKey, string> = {
 
 const orgOf = (p: PromoCard): OrgKey => (p.target === "mahesa" ? "mahesa" : "momentum");
 
-/** Kartu promo pertama yang layak tampil: aktif, proyek belum tertaut, dan tidak ditutup dalam 7 hari terakhir. */
-export function usePromo(trigger: PromoTrigger, wedding: Wedding | null): PromoCard | null {
+const sameDay = (iso: string) => new Date(iso).toDateString() === new Date().toDateString();
+
+const CLOSED_KEY = "momentum-promo-closed-v1";
+const FIRST_DELAY_MS = 1500;
+const NEXT_DELAY_MS = 8000;
+
+function readClosed(): string[] {
+  try {
+    return JSON.parse(sessionStorage.getItem(CLOSED_KEY) ?? "[]") as string[];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Iklan melayang di atas menu bawah. Satu per satu: tombol X menutup untuk sesi ini lalu iklan lain (kalau ada)
+ * muncul beberapa detik kemudian, dan kotak centang menyembunyikan iklan itu sampai besok.
+ * Iklan terkait ceklis hanya tampil di layar Ceklis selama itemnya belum selesai.
+ */
+export function PromoPopup({ wedding }: { wedding: Wedding }) {
+  const pathname = usePathname();
   const promos = useApp((s) => s.promos);
   const dismissed = useApp((s) => s.dismissed);
-  return useMemo(() => {
-    if (!wedding) return null;
-    const now = Date.now();
-    return (
-      promos.find((p) => {
-        if (!p.active || p.trigger !== trigger) return false;
-        if (wedding[orgOf(p)] !== "none") return false;
+  const templates = useApp((s) => s.templates);
+  const entries = useApp((s) => s.checklist);
+  const [closed, setClosed] = useState<string[]>([]);
+  const [shown, setShown] = useState<string | null>(null);
+  const [sheetFor, setSheetFor] = useState<PromoCard | null>(null);
+  const [hiding, setHiding] = useState<string | null>(null);
+  const gap = useRef(FIRST_DELAY_MS);
+
+  useEffect(() => setClosed(readClosed()), []);
+
+  const eligible = useMemo(() => {
+    if (pathname === "/mulai") return [];
+    const rows = pathname === "/ceklis" ? buildChecklist(templates, entries, wedding.id, wedding.track) : [];
+    return promos
+      .filter((p) => {
+        if (!p.active || wedding[orgOf(p)] !== "none") return false;
+        if (closed.includes(p.id)) return false;
         const at = dismissed[p.id];
-        return !at || now - new Date(at).getTime() > SNOOZE_MS;
-      }) ?? null
-    );
-  }, [promos, dismissed, trigger, wedding]);
+        if (at && sameDay(at)) return false;
+        if (p.trigger === "beranda") return true;
+        return rows.some((r) => !r.done && !r.hidden && r.promo === p.trigger);
+      })
+      .sort((a, b) => Number(a.trigger === "beranda") - Number(b.trigger === "beranda"));
+  }, [promos, dismissed, closed, pathname, templates, entries, wedding]);
+
+  const currentId = eligible[0]?.id ?? null;
+  // Pindah layar: iklan yang sesuai layar baru boleh menggantikan yang sedang tampil setelah jeda singkat.
+  useEffect(() => {
+    gap.current = FIRST_DELAY_MS;
+  }, [pathname]);
+  useEffect(() => {
+    if (!currentId || shown === currentId) return;
+    const t = setTimeout(() => setShown(currentId), gap.current);
+    return () => clearTimeout(t);
+  }, [currentId, shown]);
+
+  const promo = eligible.find((p) => p.id === shown) ?? null;
+
+  const closeForSession = (id: string) => {
+    gap.current = NEXT_DELAY_MS;
+    const next = [...closed, id];
+    setClosed(next);
+    try {
+      sessionStorage.setItem(CLOSED_KEY, JSON.stringify(next));
+    } catch {
+      /* hanya kenyamanan */
+    }
+  };
+
+  const hideToday = (id: string) => {
+    gap.current = NEXT_DELAY_MS;
+    dismissPromo(id);
+    toast("Iklan ini disembunyikan sampai besok.");
+  };
+
+  return (
+    <>
+      <div className="pointer-events-none fixed inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom)+0.5rem)] z-40 mx-auto w-full max-w-[430px] px-3">
+        <AnimatePresence>
+          {promo && (
+            <motion.aside
+              key={promo.id}
+              aria-label={`Iklan ${ORG_NAME[orgOf(promo)]}`}
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 24 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+              className="pointer-events-auto rounded-[14px] border border-ink/10 bg-butter p-4 text-ink shadow-[0_10px_28px_rgba(40,30,20,0.18)]"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <Tag tone="neutral">Iklan dari {ORG_NAME[orgOf(promo)]}</Tag>
+                  <h2 className="mt-2 text-[19px] leading-snug">{promo.title}</h2>
+                </div>
+                <IconButton
+                  icon="close"
+                  label="Tutup iklan ini"
+                  className="-mr-2 -mt-2 text-ink hover:bg-[#f5e78a]"
+                  onClick={() => closeForSession(promo.id)}
+                />
+              </div>
+              <p className="mt-1 text-[15px]">{promo.body}</p>
+              <Button variant="accent" className="mt-3" onClick={() => setSheetFor(promo)}>
+                {promo.cta}
+              </Button>
+              <label className="-mb-2 mt-1 flex min-h-11 cursor-pointer items-center gap-2.5 text-sm">
+                <input
+                  type="checkbox"
+                  className="size-5 shrink-0 accent-[var(--brand)]"
+                  checked={hiding === promo.id}
+                  onChange={() => {
+                    const id = promo.id;
+                    setHiding(id);
+                    setTimeout(() => hideToday(id), 300);
+                  }}
+                />
+                Jangan tampilkan lagi hari ini
+              </label>
+            </motion.aside>
+          )}
+        </AnimatePresence>
+      </div>
+      {sheetFor && (
+        <PackageSheet open onClose={() => setSheetFor(null)} org={orgOf(sheetFor)} wedding={wedding} />
+      )}
+    </>
+  );
 }
 
 export function useOrgWa(org: OrgKey): string {
@@ -86,33 +200,6 @@ export function PackageSheet({
         Kirim lewat WhatsApp
       </a>
     </Sheet>
-  );
-}
-
-export function PromoCardView({ promo, wedding, compact = false }: { promo: PromoCard; wedding: Wedding; compact?: boolean }) {
-  const [open, setOpen] = useState(false);
-  const org = orgOf(promo);
-  const Heading = compact ? "h3" : "h2";
-  return (
-    <aside aria-label={`Iklan ${ORG_NAME[org]}`} className="rounded-[14px] bg-butter p-4 text-ink">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <Tag tone="neutral">Iklan dari {ORG_NAME[org]}</Tag>
-          <Heading className={cx("mt-2", compact ? "text-[17px]" : "text-[21px]")}>{promo.title}</Heading>
-        </div>
-        <IconButton
-          icon="close"
-          label="Tutup iklan ini selama 7 hari"
-          className="-mr-2 -mt-2 text-ink hover:bg-[#f5e78a]"
-          onClick={() => dismissPromo(promo.id)}
-        />
-      </div>
-      <p className="mt-1 text-[15px]">{promo.body}</p>
-      <Button variant="accent" className="mt-3" onClick={() => setOpen(true)}>
-        {promo.cta}
-      </Button>
-      <PackageSheet open={open} onClose={() => setOpen(false)} org={org} wedding={wedding} />
-    </aside>
   );
 }
 

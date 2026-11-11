@@ -133,7 +133,7 @@ export default function PromoPage() {
     <>
       <AdminHeader
         title="Kartu promo"
-        lead="Satu kartu per layar. Pasangan bisa menutupnya, lalu kartu tidak muncul lagi selama 7 hari."
+        lead="Muncul sebagai popup melayang, satu per satu. Pasangan bisa menutupnya, atau mencentang untuk menyembunyikannya sampai besok."
         action={
           <Button icon="plus" onClick={() => setOpen("new")}>
             Tambah kartu

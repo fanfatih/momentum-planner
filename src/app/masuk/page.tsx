@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/icons";
+import { InstallButton } from "@/components/install";
 import { Monogram, Wordmark } from "@/components/Logo";
 import { DemoRibbon, StorageNotice } from "@/components/shell";
 import { Button, LoadingState, Notice, Reveal, Segmented, TextField, toast } from "@/components/ui";
@@ -197,6 +198,10 @@ export default function MasukPage() {
         )}
       </Reveal>
       )}
+
+      <div className="px-5 pt-4">
+        <InstallButton />
+      </div>
 
       {showDemo && (
       <Reveal i={4} className="px-5 pt-8">

@@ -6,7 +6,8 @@ import { useMemo, useState } from "react";
 import { ProfileSheet } from "@/components/couple/ProfileSheet";
 import { Icon } from "@/components/icons";
 import { Wordmark } from "@/components/Logo";
-import { ChangeRequestSheet, ORG_NAME, PromoCardView, useOrgWa, usePromo } from "@/components/promo";
+import { InstallCard } from "@/components/install";
+import { ChangeRequestSheet, ORG_NAME, useOrgWa } from "@/components/promo";
 import { CheckToggle, SectionTitle } from "@/components/shell";
 import { Button, buttonClass, Card, cx, IconButton, ProgressBar, Reveal, Tag } from "@/components/ui";
 import { coupleLabel, daysUntil, formatDate, formatRp, formatShortDate, waLink } from "@/lib/format";
@@ -85,7 +86,6 @@ export default function BerandaPage() {
   const guests = useApp((s) => s.guests);
   const weddingVendors = useApp((s) => s.weddingVendors);
   const allRequests = useApp((s) => s.requests);
-  const promo = usePromo("beranda", wedding);
   const [profileOpen, setProfileOpen] = useState(false);
   const [changeFor, setChangeFor] = useState<{ org: OrgKey; section: string } | null>(null);
 
@@ -147,11 +147,9 @@ export default function BerandaPage() {
 
       <Countdown wedding={wedding} onSetDate={() => setProfileOpen(true)} />
 
-      {promo && (
-        <Reveal i={1} className="px-5 pt-5">
-          <PromoCardView promo={promo} wedding={wedding} />
-        </Reveal>
-      )}
+      <Reveal i={1} className="px-5 pt-5 empty:hidden">
+        <InstallCard />
+      </Reveal>
 
       <Reveal i={2}>
         <SectionTitle aside={rows.length ? `${done} dari ${rows.length} selesai` : undefined}>Berikutnya di ceklis</SectionTitle>

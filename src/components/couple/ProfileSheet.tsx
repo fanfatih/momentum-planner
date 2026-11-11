@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { InstallButton } from "@/components/install";
 import { Button, SelectField, Sheet, TextField, toast } from "@/components/ui";
 import { ROLE_LABEL } from "@/lib/labels";
 import { TRACK_LABEL } from "@/lib/seed";
@@ -80,6 +81,7 @@ function ProfileForm({ wedding, onClose }: { wedding: Wedding; onClose: () => vo
       <Button type="submit" block>
         Simpan profil
       </Button>
+      <InstallButton />
       <Button
         variant="ghost"
         block
