@@ -38,5 +38,5 @@ export default async function InvitationPage({ params, searchParams }: Props) {
   if (!REMOTE) return <DemoInvitation slug={slug} guestName={guest} />;
   const inv = await getPublicInvitation(slug);
   if (!inv) notFound();
-  return <InvitationView content={inv.content} slug={inv.slug} guestName={guest} />;
+  return <InvitationView content={inv.content} slug={inv.slug} theme={inv.theme} guestName={guest} />;
 }

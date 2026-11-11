@@ -1,324 +1,257 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Icon } from "@/components/icons";
-import { Button, Reveal, Segmented, SelectField, TextAreaField, TextField, toast } from "@/components/ui";
-import { daysUntil, mapsLink } from "@/lib/format";
-import { loadWishes, submitRsvp, type WishEntry } from "@/lib/store";
+import { useState } from "react";
+import { buttonClass } from "@/components/ui";
+import { resolveTheme, type ThemeId } from "@/lib/invitation-themes";
 import type { InvitationContent, InvitationEvent } from "@/lib/types";
+import { BlushCluster, MarunBottomCluster, MarunSprig, MarunTopCluster, WildflowerSprig, WildflowerSpray, WildflowerWave } from "./art";
+import {
+  Countdown,
+  EventDateStack,
+  EventIcons,
+  firstName,
+  GiftCard,
+  RsvpForm,
+  scriptSize,
+  Section,
+  Wishes,
+} from "./sections";
+import "./invitation.css";
 
-const eventDate = (iso: string) => {
-  if (!iso) return "";
-  const [y, m, d] = iso.split("-").map(Number);
-  return new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(
-    new Date(Date.UTC(y, m - 1, d)),
-  );
-};
+interface CoverProps {
+  c: InvitationContent;
+  guestName: string;
+  main: InvitationEvent;
+  bride: string;
+  groom: string;
+}
 
-const shortDate = (iso: string) => {
-  if (!iso) return "";
-  const [y, m, d] = iso.split("-").map(Number);
-  return new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(
-    new Date(Date.UTC(y, m - 1, d)),
-  );
-};
-
-function EventCard({ title, ev }: { title: string; ev: InvitationEvent }) {
-  const query = ev.mapsQuery.trim() || [ev.place, ev.address].filter(Boolean).join(" ");
+function Guest({ name }: { name: string }) {
+  if (!name) return null;
   return (
-    <div className="rounded-[14px] border border-line bg-paper px-5 py-6 text-center">
-      <h3 className="font-serif text-[24px] italic text-brand-deep">{title}</h3>
-      {ev.date && <p className="mt-3 font-semibold text-ink">{eventDate(ev.date)}</p>}
-      {ev.time && <p className="text-[15px] text-ink">Pukul {ev.time}</p>}
-      {ev.place && <p className="mt-3 font-semibold text-ink">{ev.place}</p>}
-      {ev.address && <p className="mx-auto mt-1 max-w-[30ch] whitespace-pre-line text-[15px] text-ink-soft">{ev.address}</p>}
-      {query && (
-        <a
-          href={mapsLink(query)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-[10px] border border-ink/55 px-4 text-[15px] font-semibold text-ink transition-colors duration-150 hover:bg-cream-deep active:bg-line"
-        >
-          <Icon name="pin" size={18} />
-          Buka peta
-        </a>
-      )}
+    <div className="inv-guest">
+      <p className="text-[14px] text-ink-soft">Kepada Yth.</p>
+      <p className="mt-1 break-words text-[22px] font-semibold text-ink">{name}</p>
     </div>
   );
 }
 
-function Wishes({ slug, refreshKey, preview }: { slug: string; refreshKey: number; preview: boolean }) {
-  const [list, setList] = useState<WishEntry[] | null>(null);
-  useEffect(() => {
-    let live = true;
-    if (preview) {
-      setList([]);
-      return;
-    }
-    loadWishes(slug).then((r) => live && setList(r));
-    return () => {
-      live = false;
-    };
-  }, [slug, refreshKey, preview]);
+const Open = () => (
+  <a href="#mempelai" className={buttonClass("primary")}>
+    Buka undangan
+  </a>
+);
 
-  if (list === null) return <p className="text-center text-[15px] text-ink-soft">Memuat ucapan.</p>;
-  if (!list.length) {
-    return <p className="text-center text-[15px] text-ink-soft">Belum ada ucapan. Jadilah yang pertama menulis.</p>;
-  }
+function BlushCover({ main, bride, groom, guestName }: CoverProps) {
+  const b = firstName(bride);
+  const g = firstName(groom);
   return (
-    <ul className="space-y-3">
-      {list.map((w) => (
-        <li key={w.name + w.createdAt} className="rounded-[12px] border border-line bg-paper px-4 py-3">
-          <p className="font-semibold text-ink">{w.name}</p>
-          <p className="mt-1 whitespace-pre-line text-[15px] text-ink">{w.message}</p>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function RsvpForm({ slug, defaultName, preview, onSent }: { slug: string; defaultName: string; preview: boolean; onSent: () => void }) {
-  const [name, setName] = useState(defaultName);
-  const [attendance, setAttendance] = useState<"hadir" | "tidak_hadir">("hadir");
-  const [guests, setGuests] = useState(1);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
-  const [nameError, setNameError] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [sentAs, setSentAs] = useState<string | null>(null);
-
-  if (sentAs) {
-    return (
-      <div role="status" className="rounded-[14px] border border-line bg-paper px-5 py-6 text-center">
-        <p className="font-serif text-[22px] text-ink">Terima kasih, {sentAs}</p>
-        <p className="mt-1 text-[15px] text-ink-soft">Konfirmasimu sudah diterima.</p>
-        <Button variant="ghost" className="mt-2" onClick={() => setSentAs(null)}>
-          Ubah jawaban
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <form
-      noValidate
-      className="space-y-4"
-      onSubmit={async (e) => {
-        e.preventDefault();
-        if (preview) return;
-        if (!name.trim()) {
-          setNameError("Isi namamu dulu.");
-          return;
-        }
-        setBusy(true);
-        setError("");
-        const err = await submitRsvp(slug, { name: name.trim(), attendance, guests, message: message.trim() });
-        setBusy(false);
-        if (err) {
-          setError(err);
-          return;
-        }
-        setSentAs(name.trim());
-        setMessage("");
-        onSent();
-        toast("Konfirmasi terkirim.");
-      }}
-    >
-      <TextField
-        label="Nama"
-        value={name}
-        error={nameError}
-        maxLength={60}
-        autoComplete="name"
-        onChange={(e) => {
-          setName(e.target.value);
-          setNameError("");
-        }}
-      />
-      <Segmented
-        label="Kehadiran"
-        value={attendance}
-        onChange={setAttendance}
-        options={[
-          { value: "hadir", label: "Hadir" },
-          { value: "tidak_hadir", label: "Tidak hadir" },
-        ]}
-      />
-      {attendance === "hadir" && (
-        <SelectField label="Jumlah tamu yang hadir" value={guests} onChange={(e) => setGuests(Number(e.target.value))}>
-          {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-            <option key={n} value={n}>
-              {n} orang
-            </option>
-          ))}
-        </SelectField>
-      )}
-      <TextAreaField
-        label="Ucapan dan doa (opsional)"
-        value={message}
-        maxLength={300}
-        onChange={(e) => setMessage(e.target.value)}
-      />
-      {error && (
-        <p role="alert" className="text-[13px] font-medium text-brand-deep">
-          {error}
+    <section aria-label="Sampul" className="bl-cover">
+      <BlushCluster className="bl-fl bl-fl-tr" />
+      <BlushCluster className="bl-fl bl-fl-bl" />
+      <div className="bl-oval inv-rise">
+        <p className="t-caps m-0">
+          Bersama keluarga
+          <br />
+          kami mengundang
         </p>
-      )}
-      <Button type="submit" block disabled={busy || preview}>
-        {preview ? "Pratinjau: pengiriman dimatikan" : busy ? "Mengirim" : "Kirim konfirmasi"}
-      </Button>
-    </form>
+        <h1 className="bl-names t-script m-0" aria-label={`${b} dan ${g}`}>
+          <span style={{ fontSize: scriptSize(b, 76) }}>{b}</span>
+          <span className="amp" aria-hidden="true">
+            &amp;
+          </span>
+          <span style={{ fontSize: scriptSize(g, 76) }}>{g}</span>
+        </h1>
+        <p className="t-caps m-0">
+          Anda ke acara
+          <br />
+          pernikahan kami
+        </p>
+        {(main.date || main.place) && <EventIcons ev={main} withMaps={false} />}
+        <Guest name={guestName} />
+        <Open />
+      </div>
+    </section>
   );
 }
 
-function Countdown({ iso }: { iso: string }) {
-  const [days, setDays] = useState<number | null>(null);
-  useEffect(() => setDays(daysUntil(iso)), [iso]);
-  if (days === null || days < 0) return null;
+function MarunCover({ main, bride, groom, guestName }: CoverProps) {
+  const b = firstName(bride);
+  const g = firstName(groom);
   return (
-    <p className="mt-5 text-center text-[15px] text-ink-soft">
-      {days === 0 ? "Hari ini" : `${days} hari lagi menuju hari bahagia`}
-    </p>
+    <section aria-label="Sampul" className="mr-cover">
+      <div className="mr-ribbon" aria-hidden="true" />
+      <div className="mr-arch" aria-hidden="true" />
+      <MarunTopCluster className="mr-fl mr-fl-top" />
+      <MarunBottomCluster className="mr-fl mr-fl-bot" />
+      <div className="mr-content inv-rise">
+        <p className="t-caps m-0">Undangan pernikahan</p>
+        <h1 className="t-script m-0 text-brand" style={{ lineHeight: 1.02 }} aria-label={`${b} dan ${g}`}>
+          <span style={{ fontSize: scriptSize(b, 62) }}>{b}</span>
+          <span className="my-1 block text-[26px]" aria-hidden="true">
+            dan
+          </span>
+          <span style={{ fontSize: scriptSize(g, 62) }}>{g}</span>
+        </h1>
+        <div className="w-full">
+          <EventDateStack ev={main} compact />
+        </div>
+        <Guest name={guestName} />
+        <Open />
+      </div>
+    </section>
+  );
+}
+
+function WildCover({ main, bride, groom, guestName }: CoverProps) {
+  const b = firstName(bride);
+  const g = firstName(groom);
+  return (
+    <section aria-label="Sampul" className="wf-cover">
+      <WildflowerWave className="wf-wave" />
+      <WildflowerSpray className="wf-spray" />
+      <div className="wf-top inv-rise">
+        <p className="t-caps m-0">Kami mengundang Anda ke</p>
+        <p className="t-script m-0" style={{ fontSize: 66, lineHeight: 1.05, color: "var(--gold)" }}>
+          pernikahan
+        </p>
+        <h1 className="wf-names m-0" aria-label={`${b} dan ${g}`} style={{ fontSize: b.length > 9 || g.length > 9 ? 26 : 34 }}>
+          {b}
+          <span className="my-2 block text-[15px] font-medium normal-case italic tracking-[0.1em]" aria-hidden="true">
+            dan
+          </span>
+          {g}
+        </h1>
+      </div>
+      <div className="wf-bottom">
+        {(main.date || main.place) && <EventIcons ev={main} withMaps={false} />}
+        <Guest name={guestName} />
+        <div>
+          <Open />
+        </div>
+      </div>
+    </section>
   );
 }
 
 export function InvitationView({
   content: c,
   slug,
+  theme,
   guestName = "",
   preview = false,
 }: {
   content: InvitationContent;
   slug: string;
+  theme?: string;
   guestName?: string;
   preview?: boolean;
 }) {
   const [wishKey, setWishKey] = useState(0);
+  const t = resolveTheme(theme);
+  const id: ThemeId = t.id;
   const bride = c.brideFull.trim() || "Mempelai wanita";
   const groom = c.groomFull.trim() || "Mempelai pria";
-  const firstName = (s: string) => s.trim().split(/\s+/)[0] || s;
   const hasAkad = !!(c.akad.date || c.akad.place || c.akad.time);
   const hasResepsi = c.hasResepsi && !!(c.resepsi.date || c.resepsi.place || c.resepsi.time);
   const gifts = c.gifts.filter((g) => g.number.trim());
+  const main = hasAkad ? c.akad : c.resepsi;
+  const cover: CoverProps = { c, guestName, main, bride, groom };
+
+  const ornament = (
+    <>
+      {id === "marun" && <MarunSprig className="mr-sprig" />}
+      {id === "wildflower" && <WildflowerSprig className="wf-sprig" />}
+    </>
+  );
+
+  const events: { key: string; title: string; ev: InvitationEvent }[] = [];
+  if (hasAkad) events.push({ key: "akad", title: "Akad nikah", ev: c.akad });
+  if (hasResepsi) events.push({ key: "resepsi", title: "Resepsi", ev: c.resepsi });
 
   return (
-    <main className="phone-frame pb-14">
+    <main className={`phone-frame inv inv-${id}`}>
       {preview && (
-        <p role="note" className="bg-butter px-4 py-2 text-center text-sm font-medium text-ink">
+        <p role="note" className="relative z-10 m-0 bg-butter px-4 py-2 text-center text-sm font-medium text-ink">
           Pratinjau. Hanya kamu yang melihat tampilan ini, tamu membukanya lewat link undangan.
         </p>
       )}
 
-      <section aria-label="Sampul" className="px-5 pt-8">
-        <div className="arch bg-brand px-6 pb-12 pt-24 text-center text-cream">
-          <p className="text-sm font-semibold uppercase tracking-[0.18em]">Undangan pernikahan</p>
-          <h1 className="mt-5 font-serif text-[40px] italic leading-[1.1]">
-            {firstName(bride)}
-            <span className="block text-[26px] not-italic">&amp;</span>
-            {firstName(groom)}
-          </h1>
-          {(c.akad.date || c.resepsi.date) && <p className="mt-5 text-[17px]">{shortDate(c.akad.date || c.resepsi.date)}</p>}
-        </div>
-        {guestName && (
-          <div className="mt-6 text-center">
-            <p className="text-[15px] text-ink-soft">Kepada Yth.</p>
-            <p className="mt-1 break-words font-serif text-[24px] font-semibold text-ink">{guestName}</p>
+      {id === "blush" && <BlushCover {...cover} />}
+      {id === "marun" && <MarunCover {...cover} />}
+      {id === "wildflower" && <WildCover {...cover} />}
+
+      <div className="relative z-[1] pt-8">
+        <Section id="mempelai" label="Mempelai" title="Mempelai" orn={ornament}>
+          {id === "blush" && <BlushCluster className="bl-sprig" style={{ top: "-9%", right: "-20%", width: "52%" }} />}
+          <div className="inv-gap">
+            <p className="t-body inv-lead m-0">
+              {c.opening.trim() || "Dengan penuh syukur, kami mengundang Anda untuk hadir dan berbagi kebahagiaan di hari pernikahan kami."}
+            </p>
+            <div>
+              <p className="inv-name">{bride}</p>
+              {c.brideParents && <p className="inv-parents">{c.brideParents}</p>}
+              <p className="inv-name inv-amp" aria-hidden="true">
+                &amp;
+              </p>
+              <p className="inv-name">{groom}</p>
+              {c.groomParents && <p className="inv-parents">{c.groomParents}</p>}
+            </div>
           </div>
+        </Section>
+
+        {events.length > 0 && (
+          <Section id="acara" label="Acara" title="Acara" orn={ornament}>
+            <div className="inv-gap">
+              {events.map(({ key, title, ev }) =>
+                id === "marun" ? (
+                  <div key={key} className="mr-event inv-event">
+                    <h3 className="inv-sub">{title}</h3>
+                    <div className="mt-3">
+                      <EventDateStack ev={ev} />
+                    </div>
+                  </div>
+                ) : (
+                  <div key={key} className="inv-event">
+                    <h3 className="inv-sub">{title}</h3>
+                    <EventIcons ev={ev} />
+                  </div>
+                ),
+              )}
+            </div>
+            <Countdown iso={c.akad.date || c.resepsi.date} />
+          </Section>
         )}
-        <div className="mt-6 text-center">
-          <a
-            href="#acara"
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[10px] bg-brand px-5 text-[15px] font-semibold text-cream transition-colors duration-150 hover:bg-brand-deep"
-          >
-            Lihat detail acara
-            <Icon name="chevronDown" size={18} />
-          </a>
-        </div>
-      </section>
 
-      <Reveal i={1} className="px-5 pt-12 text-center">
-        <p className="mx-auto max-w-[34ch] whitespace-pre-line text-[17px] leading-relaxed text-ink">
-          {c.opening.trim() || "Dengan penuh syukur, kami mengundang Anda untuk hadir dan berbagi kebahagiaan di hari pernikahan kami."}
-        </p>
-      </Reveal>
+        {gifts.length > 0 && (
+          <Section label="Amplop digital" title="Amplop digital" orn={ornament}>
+            <p className="t-body inv-lead m-0 mb-5">
+              Doa restu Anda sudah menjadi hadiah terbaik. Bila ingin berbagi tanda kasih, bisa melalui rekening berikut.
+            </p>
+            <ul className="m-0 space-y-3 p-0">
+              {gifts.map((g, i) => (
+                <GiftCard key={i} {...g} />
+              ))}
+            </ul>
+          </Section>
+        )}
 
-      <section aria-label="Mempelai" className="px-5 pt-12 text-center">
-        <h2 className="sr-only">Mempelai</h2>
-        <p className="font-serif text-[30px] font-semibold leading-tight text-ink">{bride}</p>
-        {c.brideParents && <p className="mx-auto mt-1 max-w-[32ch] text-[15px] text-ink-soft">{c.brideParents}</p>}
-        <p aria-hidden="true" className="my-4 font-serif text-[28px] italic text-brand">
-          &amp;
-        </p>
-        <p className="font-serif text-[30px] font-semibold leading-tight text-ink">{groom}</p>
-        {c.groomParents && <p className="mx-auto mt-1 max-w-[32ch] text-[15px] text-ink-soft">{c.groomParents}</p>}
-      </section>
-
-      {(hasAkad || hasResepsi) && (
-        <section id="acara" aria-label="Acara" className="scroll-mt-4 px-5 pt-14">
-          <h2 className="text-center font-serif text-[28px]">Acara</h2>
-          <div className="mt-5 space-y-4">
-            {hasAkad && <EventCard title="Akad nikah" ev={c.akad} />}
-            {hasResepsi && <EventCard title="Resepsi" ev={c.resepsi} />}
-          </div>
-          <Countdown iso={c.akad.date || c.resepsi.date} />
-        </section>
-      )}
-
-      {gifts.length > 0 && (
-        <section aria-label="Amplop digital" className="px-5 pt-14">
-          <h2 className="text-center font-serif text-[28px]">Amplop digital</h2>
-          <p className="mx-auto mt-2 max-w-[34ch] text-center text-[15px] text-ink-soft">
-            Doa restu Anda sudah menjadi hadiah terbaik. Bila ingin berbagi tanda kasih, bisa melalui rekening berikut.
-          </p>
-          <ul className="mt-5 space-y-3">
-            {gifts.map((g, i) => (
-              <li key={i} className="rounded-[14px] border border-line bg-paper px-5 py-4 text-center">
-                <p className="text-[15px] font-semibold text-ink">{g.bank || "Rekening"}</p>
-                <p className="mt-1 font-serif text-[24px] font-semibold tabular-nums text-ink">{g.number}</p>
-                {g.holder && <p className="text-[15px] text-ink-soft">a.n. {g.holder}</p>}
-                <Button
-                  variant="secondary"
-                  icon="copy"
-                  className="mt-3"
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(g.number.replace(/\s/g, ""));
-                      toast("Nomor rekening disalin.");
-                    } catch {
-                      toast("Nomor tidak bisa disalin otomatis, salin manual ya.");
-                    }
-                  }}
-                >
-                  Salin nomor
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <section aria-label="Konfirmasi kehadiran" className="px-5 pt-14">
-        <h2 className="text-center font-serif text-[28px]">Konfirmasi kehadiran</h2>
-        <div className="mt-5">
+        <Section label="Konfirmasi kehadiran" title="Konfirmasi kehadiran" orn={ornament}>
+          {id === "blush" && <BlushCluster className="bl-sprig" style={{ bottom: "-7%", left: "-20%", width: "52%", transform: "rotate(180deg)" }} />}
           <RsvpForm slug={slug} defaultName={guestName} preview={preview} onSent={() => setWishKey((k) => k + 1)} />
-        </div>
-      </section>
+        </Section>
 
-      <section aria-label="Ucapan" className="px-5 pt-14">
-        <h2 className="text-center font-serif text-[28px]">Ucapan</h2>
-        <div className="mt-5">
+        <Section label="Ucapan" title="Ucapan" orn={ornament}>
           <Wishes slug={slug} refreshKey={wishKey} preview={preview} />
-        </div>
-      </section>
+        </Section>
 
-      <section aria-label="Penutup" className="px-5 pt-14 text-center">
-        <p className="mx-auto max-w-[34ch] whitespace-pre-line text-[17px] leading-relaxed text-ink">{c.closing}</p>
-        <p className="mt-6 font-serif text-[24px] italic text-brand-deep">
-          {firstName(bride)} &amp; {firstName(groom)}
-        </p>
-      </section>
+        <Section label="Penutup" title={firstName(bride) + " & " + firstName(groom)} orn={ornament}>
+          <p className="t-body inv-lead m-0">{c.closing}</p>
+        </Section>
+      </div>
 
-      <footer className="px-5 pt-12 text-center text-[13px] text-ink-soft">Dibuat dengan Momentum Planner</footer>
+      <footer className="inv-footer">Dibuat dengan Momentum Planner</footer>
     </main>
   );
 }
+

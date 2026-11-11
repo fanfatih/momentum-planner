@@ -370,9 +370,11 @@ const step = async (name, fn) => { try { const r = await fn(); log(r !== false, 
     await page.getByLabel('Nama tempat').first().fill('Gedung Uji');
     await btn('Tambah rekening').click(); await page.getByLabel('Nomor rekening').fill('1234567890'); await page.getByLabel('Bank atau e-wallet').fill('BCA');
     await page.getByLabel(/Aktifkan undangan/).check();
+    const themes = await page.getByRole('radio').count();
+    await page.getByText('Marun Lengkung', { exact: true }).click();
     await btn('Simpan isi undangan').click(); await page.getByText('Isi undangan disimpan.').waitFor();
     await page.reload(); await page.getByRole('heading', { name: 'Alamat undangan' }).waitFor();
-    return (await page.getByLabel('Nama di alamat').inputValue()) === 'aulia-raka-bogor' && (await page.getByLabel('Nomor rekening').inputValue()) === '1234567890' && await page.getByLabel(/Aktifkan undangan/).isChecked();
+    return themes === 3 && (await page.getByLabel('Nama di alamat').inputValue()) === 'aulia-raka-bogor' && (await page.getByLabel('Nomor rekening').inputValue()) === '1234567890' && await page.getByLabel(/Aktifkan undangan/).isChecked() && await page.getByRole('radio', { name: /Marun Lengkung/ }).isChecked();
   });
   await step('undangan: pratinjau menampilkan undangan dengan label pratinjau', async () => {
     await page.getByRole('link', { name: 'Pratinjau' }).click(); await page.waitForURL('**/pratinjau-undangan');
@@ -382,7 +384,8 @@ const step = async (name, fn) => { try { const r = await fn(); log(r !== false, 
   await step('undangan publik: nama tamu dari ?to=, acara, peta, rekening', async () => {
     await page.goto(BASE + '/u/aulia-raka-bogor?to=Budi%20Santoso'); await page.getByRole('heading', { name: 'Konfirmasi kehadiran' }).waitFor();
     const ok = await page.getByText('Kepada Yth.').isVisible() && await page.getByText('Budi Santoso', { exact: true }).first().isVisible()
-      && await page.getByText('Gedung Uji').isVisible() && await page.getByText('1234567890').isVisible()
+      && await page.getByText('Gedung Uji').first().isVisible() && await page.getByText('1234567890').isVisible()
+      && (await page.locator('main.inv-marun').count()) === 1
       && (await page.getByRole('link', { name: 'Buka peta' }).first().getAttribute('href')).startsWith('https://www.google.com/maps/search/');
     return ok && (await overflow()) <= 0;
   });
@@ -403,6 +406,23 @@ const step = async (name, fn) => { try { const r = await fn(); log(r !== false, 
   });
   await step('beranda: baris Undangan digital menunjukkan isi tersimpan', async () => {
     await page.goto(BASE + '/beranda'); return await page.getByRole('link', { name: /Undangan digital/ }).getByText('Isi undangan tersimpan').isVisible();
+  });
+  await step('tamu: tombol kirim WhatsApp per tamu memakai link personal dan menandai Diundang', async () => {
+    await page.goto(BASE + '/tamu'); await page.getByRole('heading', { name: 'Tamu', exact: true }).waitFor();
+    const row = page.locator('ul.divide-y > li').filter({ hasText: 'Belum diundang' }).first();
+    const send = row.getByRole('link', { name: /^Kirim undangan ke/ });
+    const name = (await send.getAttribute('aria-label')).replace('Kirim undangan ke ', '').replace(' lewat WhatsApp', '');
+    const href = decodeURIComponent(await send.getAttribute('href'));
+    const linkOk = href.startsWith('https://wa.me/') && href.includes('/u/aulia-raka-bogor?to=' + encodeURIComponent(name));
+    await send.click(); await page.waitForTimeout(300);
+    const marked = (await page.locator('ul.divide-y > li').filter({ hasText: name }).first().textContent()).includes('Diundang');
+    return linkOk && marked;
+  });
+  await step('tamu: sheet tamu punya pesan WhatsApp yang bisa diubah dan salin link', async () => {
+    await page.locator('ul.divide-y > li').first().getByRole('button').first().click(); await dialog().waitFor();
+    const msg = await dialog().getByLabel('Pesan WhatsApp').inputValue();
+    const ok = msg.includes('/u/aulia-raka-bogor?to=') && await dialog().getByRole('button', { name: 'Salin link' }).isVisible();
+    await page.keyboard.press('Escape'); return ok;
   });
   await page.goto(BASE + '/masuk'); await page.waitForTimeout(100);
 

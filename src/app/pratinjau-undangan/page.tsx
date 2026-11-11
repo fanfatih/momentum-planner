@@ -31,7 +31,7 @@ export default function PratinjauPage() {
           Kembali ke editor
         </Link>
       </div>
-      <InvitationView content={inv.content} slug={inv.slug} guestName="Nama Tamu" preview />
+      <InvitationView content={inv.content} slug={inv.slug} theme={inv.theme} guestName="Nama Tamu" preview />
     </>
   );
 }

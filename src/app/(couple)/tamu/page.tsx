@@ -3,16 +3,98 @@
 import { useMemo, useState } from "react";
 import { Icon } from "@/components/icons";
 import { PageHeader } from "@/components/shell";
-import { Button, Card, Chip, EmptyState, Reveal, SelectField, Sheet, Tag, TextField, toast } from "@/components/ui";
+import { Button, buttonClass, Card, Chip, EmptyState, Reveal, SelectField, Sheet, Tag, TextAreaField, TextField, toast } from "@/components/ui";
 import { useCurrentWedding } from "@/lib/guard";
 import { GUEST_GROUP, GUEST_STATUS } from "@/lib/labels";
 import { removeGuest, saveGuest, useApp } from "@/lib/store";
-import type { Guest, GuestGroup, GuestStatus } from "@/lib/types";
+import { canSendInvitation, defaultInviteMessage, guestLink, inviteWaUrl } from "@/lib/share-invitation";
+import type { Guest, GuestGroup, GuestStatus, Invitation, Wedding } from "@/lib/types";
 
 const GROUPS = Object.keys(GUEST_GROUP) as GuestGroup[];
 const STATUSES = Object.keys(GUEST_STATUS) as GuestStatus[];
 
-function GuestForm({ weddingId, guest, onClose }: { weddingId: string; guest: Guest | null; onClose: () => void }) {
+/** Tamu yang sudah dikirimi link otomatis ditandai Diundang, supaya daftar kerja tetap rapi. */
+function markInvited(guest: Guest) {
+  if (guest.status !== "belum") return false;
+  saveGuest({ ...guest, status: "diundang" });
+  toast(`${guest.name} ditandai Diundang.`);
+  return true;
+}
+
+function SendPanel({
+  wedding,
+  invitation,
+  guest,
+  onSent,
+}: {
+  wedding: Wedding;
+  invitation: Invitation | undefined;
+  guest: Guest;
+  onSent: () => void;
+}) {
+  const origin = typeof window === "undefined" ? "" : window.location.origin;
+  const published = canSendInvitation(wedding, invitation);
+  const link = published ? guestLink(origin, invitation.slug, guest.name) : "";
+  const [text, setText] = useState(() => (published ? defaultInviteMessage(wedding, guest, link) : ""));
+
+  if (wedding.plan !== "premium") return null;
+  if (!published) {
+    return (
+      <section aria-label="Kirim undangan" className="space-y-2 rounded-[12px] border border-line bg-paper p-3">
+        <h3 className="text-[16px]">Kirim undangan digital</h3>
+        <p className="m-0 text-[14px] text-ink-soft">Undangan belum aktif. Aktifkan dulu di menu Undangan, lalu link personal tamu muncul di sini.</p>
+      </section>
+    );
+  }
+  return (
+    <section aria-label="Kirim undangan" className="space-y-3 rounded-[12px] border border-line bg-paper p-3">
+      <h3 className="text-[16px]">Kirim undangan digital</h3>
+      <TextAreaField label="Pesan WhatsApp" value={text} onChange={(e) => setText(e.target.value)} hint="Boleh diubah sebelum dikirim. Link personal sudah ada di dalamnya." />
+      <div className="grid grid-cols-2 gap-2">
+        <a
+          href={inviteWaUrl(guest, text)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={buttonClass("primary")}
+          onClick={() => {
+            if (markInvited(guest)) onSent();
+          }}
+        >
+          Kirim lewat WhatsApp
+        </a>
+        <Button
+          variant="secondary"
+          icon="copy"
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(link);
+              toast("Link personal disalin.");
+            } catch {
+              toast("Link tidak bisa disalin otomatis.");
+            }
+          }}
+        >
+          Salin link
+        </Button>
+      </div>
+      {!guest.wa.trim() && <p className="m-0 text-[13px] text-ink-soft">Belum ada nomor WhatsApp. WhatsApp akan meminta kamu memilih kontaknya.</p>}
+    </section>
+  );
+}
+
+function GuestForm({
+  weddingId,
+  guest,
+  onClose,
+  wedding,
+  invitation,
+}: {
+  weddingId: string;
+  guest: Guest | null;
+  onClose: () => void;
+  wedding: Wedding;
+  invitation: Invitation | undefined;
+}) {
   const [name, setName] = useState(guest?.name ?? "");
   const [wa, setWa] = useState(guest?.wa ?? "");
   const [group, setGroup] = useState<GuestGroup>(guest?.group ?? "keluarga_wanita");
@@ -77,6 +159,7 @@ function GuestForm({ weddingId, guest, onClose }: { weddingId: string; guest: Gu
       <Button type="submit" block>
         {guest ? "Simpan perubahan" : "Tambah tamu"}
       </Button>
+      {guest && <SendPanel wedding={wedding} invitation={invitation} guest={guest} onSent={() => setStatus("diundang")} />}
       {guest && (
         <Button
           variant="danger"
@@ -98,6 +181,7 @@ function GuestForm({ weddingId, guest, onClose }: { weddingId: string; guest: Gu
 export default function TamuPage() {
   const wedding = useCurrentWedding();
   const all = useApp((s) => s.guests);
+  const invitations = useApp((s) => s.invitations);
   const [status, setStatus] = useState<GuestStatus | "semua">("semua");
   const [group, setGroup] = useState<GuestGroup | "semua">("semua");
   const [query, setQuery] = useState("");
@@ -116,6 +200,9 @@ export default function TamuPage() {
   );
   const filtered = status !== "semua" || group !== "semua" || !!q;
   const editing = openId && openId !== "new" ? (guests.find((g) => g.id === openId) ?? null) : null;
+  const invitation = invitations.find((i) => i.weddingId === wedding.id);
+  const origin = typeof window === "undefined" ? "" : window.location.origin;
+  const sendable = canSendInvitation(wedding, invitation);
 
   return (
     <>
@@ -198,22 +285,37 @@ export default function TamuPage() {
               <ul className="divide-y divide-line">
                 {shown.map((g, i) => (
                   <Reveal as="li" key={g.id} i={i}>
-                    <button
-                      type="button"
-                      onClick={() => setOpenId(g.id)}
-                      className="flex min-h-16 w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors duration-150 hover:bg-cream-deep active:bg-line"
-                    >
-                      <span className="min-w-0">
-                        <span className="block truncate font-semibold text-ink">{g.name}</span>
-                        <span className="block text-[13px] text-ink-soft">
-                          {GUEST_GROUP[g.group]}, {g.count} orang
+                    <div className="flex items-center">
+                      <button
+                        type="button"
+                        onClick={() => setOpenId(g.id)}
+                        className="flex min-h-16 min-w-0 flex-1 items-center justify-between gap-3 py-3 pl-4 pr-2 text-left transition-colors duration-150 hover:bg-cream-deep active:bg-line"
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate font-semibold text-ink">{g.name}</span>
+                          <span className="block text-[13px] text-ink-soft">
+                            {GUEST_GROUP[g.group]}, {g.count} orang
+                          </span>
                         </span>
-                      </span>
-                      <span className="flex shrink-0 items-center gap-2">
-                        <Tag tone={GUEST_STATUS[g.status].tone}>{GUEST_STATUS[g.status].label}</Tag>
-                        <Icon name="chevronRight" size={16} className="text-ink-soft" />
-                      </span>
-                    </button>
+                        <span className="flex shrink-0 items-center gap-2">
+                          <Tag tone={GUEST_STATUS[g.status].tone}>{GUEST_STATUS[g.status].label}</Tag>
+                          <Icon name="chevronRight" size={16} className="text-ink-soft" />
+                        </span>
+                      </button>
+                      {sendable && (
+                        <a
+                          href={inviteWaUrl(g, defaultInviteMessage(wedding, g, guestLink(origin, invitation.slug, g.name)))}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={`Kirim undangan ke ${g.name} lewat WhatsApp`}
+                          title="Kirim undangan lewat WhatsApp"
+                          onClick={() => markInvited(g)}
+                          className="mr-2 inline-grid size-11 shrink-0 place-items-center rounded-[10px] text-brand-deep transition-colors duration-150 hover:bg-cream-deep active:bg-line"
+                        >
+                          <Icon name="chat" size={20} />
+                        </a>
+                      )}
+                    </div>
                   </Reveal>
                 ))}
               </ul>
@@ -223,7 +325,7 @@ export default function TamuPage() {
       )}
 
       <Sheet open={openId !== null} onClose={() => setOpenId(null)} title={editing ? "Ubah data tamu" : "Tambah tamu"}>
-        <GuestForm key={openId ?? "none"} weddingId={wedding.id} guest={editing} onClose={() => setOpenId(null)} />
+        <GuestForm key={openId ?? "none"} weddingId={wedding.id} guest={editing} wedding={wedding} invitation={invitation} onClose={() => setOpenId(null)} />
       </Sheet>
     </>
   );

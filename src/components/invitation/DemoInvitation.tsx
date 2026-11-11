@@ -17,5 +17,5 @@ export function DemoInvitation({ slug, guestName }: { slug: string; guestName: s
       </main>
     );
   }
-  return <InvitationView content={inv.content} slug={inv.slug} guestName={guestName} />;
+  return <InvitationView content={inv.content} slug={inv.slug} theme={inv.theme} guestName={guestName} />;
 }
