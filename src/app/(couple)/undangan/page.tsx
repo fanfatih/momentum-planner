@@ -9,15 +9,16 @@ import { Button, buttonClass, Card, cx, Notice, Reveal, Sheet, Tag, TextAreaFiel
 import { coupleLabel, isDummyWa, waLink } from "@/lib/format";
 import { useCurrentWedding } from "@/lib/guard";
 import { contentFromWedding, SLUG_PATTERN, suggestSlug } from "@/lib/invitation";
-import { saveInvitation, useApp } from "@/lib/store";
+import { removeRsvp, saveInvitation, useApp } from "@/lib/store";
 import type { Invitation, InvitationContent, InvitationEvent, Wedding } from "@/lib/types";
+import { IconButton } from "@/components/ui";
 
 const FEATURES = [
-  "Halaman undangan dengan alamat sendiri",
+  "Halaman undangan dengan alamat sendiri, peta, dan amplop digital",
   "Link personal per tamu, nama tamu tampil di undangan",
   "RSVP dan ucapan dari tamu",
-  "Kirim lewat WhatsApp dari nomor kalian sendiri",
-  "Beberapa pilihan tema",
+  "Bagikan lewat WhatsApp dari nomor kalian sendiri",
+  "Tema Klasik, tema lain menyusul",
 ];
 
 function InquirySheet({ open, onClose, wedding }: { open: boolean; onClose: () => void; wedding: Wedding }) {
@@ -55,7 +56,6 @@ function Locked({ wedding }: { wedding: Wedding }) {
       <Card className="p-5">
         <div className="flex flex-wrap items-center gap-2">
           <Tag tone="sun">Fitur premium</Tag>
-          <Tag>Sedang disiapkan</Tag>
         </div>
         <h2 className="mt-3 text-[21px]">Undangan digital untuk pernikahanmu</h2>
         <p className="mt-1 text-[15px] text-ink-soft">
@@ -107,11 +107,71 @@ function EventFields({
   );
 }
 
+function ShareLink({ slug }: { slug: string }) {
+  const link = () => `${window.location.origin}/u/${slug}`;
+  return (
+    <>
+      <Button
+        variant="secondary"
+        icon="copy"
+        onClick={async () => {
+          try {
+            await navigator.clipboard.writeText(link());
+            toast("Link undangan disalin.");
+          } catch {
+            toast("Link tidak bisa disalin otomatis.");
+          }
+        }}
+      >
+        Salin link
+      </Button>
+      <a href={`/u/${slug}`} target="_blank" rel="noopener noreferrer" className={buttonClass("secondary")}>
+        Buka undangan
+      </a>
+    </>
+  );
+}
+
+function RsvpSummary({ weddingId }: { weddingId: string }) {
+  const all = useApp((s) => s.rsvps);
+  const list = all.filter((r) => r.weddingId === weddingId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const hadir = list.filter((r) => r.attendance === "hadir");
+  const people = hadir.reduce((n, r) => n + r.guests, 0);
+  return (
+    <section aria-label="Respons tamu" className="space-y-3 px-5 pt-8">
+      <h2 className="text-[19px]">Respons tamu</h2>
+      {list.length === 0 ? (
+        <p className="text-[15px] text-ink-soft">Belum ada tamu yang mengisi konfirmasi.</p>
+      ) : (
+        <>
+          <p className="text-[15px] text-ink">
+            {hadir.length} konfirmasi hadir ({people} orang), {list.length - hadir.length} tidak hadir.
+          </p>
+          <ul className="divide-y divide-line rounded-[14px] border border-line bg-paper">
+            {list.map((r) => (
+              <li key={r.id} className="flex items-start gap-2 px-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-ink">
+                    {r.name} <span className="font-normal text-ink-soft">{r.attendance === "hadir" ? `hadir, ${r.guests} orang` : "tidak hadir"}</span>
+                  </p>
+                  {r.message && <p className="mt-0.5 whitespace-pre-line text-[15px] text-ink-soft">{r.message}</p>}
+                </div>
+                <IconButton icon="trash" label={`Hapus respons ${r.name}`} className="-mr-2 -mt-1" onClick={() => removeRsvp(r.id)} />
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </section>
+  );
+}
+
 function Editor({ wedding, existing }: { wedding: Wedding; existing: Invitation | null }) {
   const [slug, setSlug] = useState(existing?.slug ?? suggestSlug(wedding));
   const [c, setC] = useState<InvitationContent>(existing?.content ?? contentFromWedding(wedding));
   const [slugError, setSlugError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [published, setPublished] = useState(existing?.published ?? false);
   const set = (patch: Partial<InvitationContent>) => setC((prev) => ({ ...prev, ...patch }));
 
   const setGift = (i: number, patch: Partial<InvitationContent["gifts"][number]>) =>
@@ -129,7 +189,7 @@ function Editor({ wedding, existing }: { wedding: Wedding; existing: Invitation 
       weddingId: wedding.id,
       slug: clean,
       theme: existing?.theme ?? "klasik",
-      published: existing?.published ?? false,
+      published,
       content: { ...c, gifts: c.gifts.filter((g) => g.number.trim()) },
     });
     setBusy(false);
@@ -145,7 +205,28 @@ function Editor({ wedding, existing }: { wedding: Wedding; existing: Invitation 
 
   return (
     <form onSubmit={save} noValidate className="space-y-7 px-5">
-      <Notice>Halaman undangan untuk tamu menyusul di pembaruan berikutnya. Isi di sini tersimpan dan dipakai saat itu.</Notice>
+      <section aria-label="Status undangan" className="space-y-3">
+        <label className="flex min-h-11 cursor-pointer items-start gap-2.5 text-[15px]">
+          <input
+            type="checkbox"
+            className="mt-0.5 size-5 shrink-0 accent-[var(--brand)]"
+            checked={published}
+            onChange={(e) => setPublished(e.target.checked)}
+          />
+          <span>
+            <span className="block font-semibold text-ink">Aktifkan undangan</span>
+            <span className="block text-ink-soft">Kalau aktif, siapa pun yang punya link bisa membukanya. Simpan setelah mengubah.</span>
+          </span>
+        </label>
+        {existing && (
+          <div className="flex flex-wrap gap-2">
+            <Link href="/pratinjau-undangan" className={buttonClass("secondary")}>
+              Pratinjau
+            </Link>
+            {existing.published && <ShareLink slug={existing.slug} />}
+          </div>
+        )}
+      </section>
 
       <section className="space-y-3" aria-label="Alamat undangan">
         <h2 className="text-[19px]">Alamat undangan</h2>
@@ -249,7 +330,14 @@ export default function UndanganPage() {
           </Link>
         }
       />
-      {wedding.plan === "premium" ? <Editor key={wedding.id} wedding={wedding} existing={existing} /> : <Locked wedding={wedding} />}
+      {wedding.plan === "premium" ? (
+        <>
+          <Editor key={wedding.id} wedding={wedding} existing={existing} />
+          <RsvpSummary weddingId={wedding.id} />
+        </>
+      ) : (
+        <Locked wedding={wedding} />
+      )}
     </>
   );
 }

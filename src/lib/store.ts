@@ -13,6 +13,7 @@ import type {
   BudgetItem,
   BudgetPayment,
   Invitation,
+  Rsvp,
   ChangeRequest,
   ChecklistEntry,
   ChecklistKind,
@@ -178,7 +179,7 @@ export function hydrate() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as AppState;
-      if (parsed && parsed.v === 1 && Array.isArray(parsed.weddings)) state = { ...parsed, payments: parsed.payments ?? [], invitations: parsed.invitations ?? [] };
+      if (parsed && parsed.v === 1 && Array.isArray(parsed.weddings)) state = { ...parsed, payments: parsed.payments ?? [], invitations: parsed.invitations ?? [], rsvps: parsed.rsvps ?? [] };
       else loadError = "Data tersimpan di perangkat ini tidak dikenali, jadi dimuat ulang dari data contoh.";
     }
   } catch {
@@ -721,4 +722,72 @@ export function canSeeWedding(role: Role, w: Wedding): boolean {
   if (role === "admin_mahesa") return w.mahesa !== "none";
   if (role === "admin_momentum") return w.momentum !== "none";
   return false;
+}
+
+/* RSVP dan ucapan tamu (halaman undangan publik) */
+
+export interface WishEntry {
+  name: string;
+  attendance: "hadir" | "tidak_hadir";
+  message: string;
+  createdAt: string;
+}
+
+export async function submitRsvp(
+  slug: string,
+  input: { name: string; attendance: "hadir" | "tidak_hadir"; guests: number; message: string },
+): Promise<string | null> {
+  const client = sb;
+  if (REMOTE && client) {
+    const { error } = await client.rpc("submit_rsvp", {
+      p_slug: slug,
+      p_name: input.name,
+      p_attendance: input.attendance,
+      p_guests: input.guests,
+      p_message: input.message,
+    });
+    if (error) return /ditolak|tidak ditemukan|wajib|penuh/i.test(error.message) ? error.message : "RSVP belum terkirim. Coba lagi sebentar lagi.";
+    return null;
+  }
+  const inv = state.invitations.find((i) => i.slug === slug && i.published);
+  if (!inv) return "Undangan tidak ditemukan.";
+  const key = input.name.trim().toLowerCase();
+  const entry: Rsvp = {
+    id: uid("rs"),
+    weddingId: inv.weddingId,
+    name: input.name.trim(),
+    attendance: input.attendance,
+    guests: input.attendance === "hadir" ? input.guests : 1,
+    message: input.message.trim().slice(0, 300),
+    createdAt: new Date().toISOString(),
+  };
+  update((s) => ({
+    ...s,
+    rsvps: [...s.rsvps.filter((r) => !(r.weddingId === inv.weddingId && r.name.toLowerCase() === key)), entry],
+  }));
+  return null;
+}
+
+export async function loadWishes(slug: string): Promise<WishEntry[]> {
+  const client = sb;
+  if (REMOTE && client) {
+    const { data } = await client.rpc("list_wishes", { p_slug: slug });
+    return ((data as { guest_name: string; attendance: string; message: string; created_at: string }[] | null) ?? []).map((r) => ({
+      name: r.guest_name,
+      attendance: r.attendance === "hadir" ? "hadir" : "tidak_hadir",
+      message: r.message,
+      createdAt: r.created_at,
+    }));
+  }
+  const inv = state.invitations.find((i) => i.slug === slug && i.published);
+  if (!inv) return [];
+  return state.rsvps
+    .filter((r) => r.weddingId === inv.weddingId && r.message)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .map((r) => ({ name: r.name, attendance: r.attendance, message: r.message, createdAt: r.createdAt }));
+}
+
+export function removeRsvp(id: string) {
+  update((s) => ({ ...s, rsvps: s.rsvps.filter((r) => r.id !== id) }));
+  sync((c) => R.deleteRows(c, "invitation_rsvps", { id }));
 }

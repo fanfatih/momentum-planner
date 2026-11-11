@@ -212,6 +212,7 @@ export function seedState(): AppState {
     budget: structuredClone(budget),
     payments: structuredClone(payments),
     invitations: [],
+    rsvps: [],
     guests: structuredClone(guests),
     promos: structuredClone(promos),
     dismissed: {},

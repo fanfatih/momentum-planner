@@ -145,6 +145,16 @@ export interface Invitation {
   content: InvitationContent;
 }
 
+export interface Rsvp {
+  id: string;
+  weddingId: string;
+  name: string;
+  attendance: "hadir" | "tidak_hadir";
+  guests: number;
+  message: string;
+  createdAt: string;
+}
+
 export type Payer = "bride" | "groom";
 
 /** Satu pembayaran ke vendor untuk sebuah pos budget. */
@@ -221,6 +231,7 @@ export interface AppState {
   budget: BudgetItem[];
   payments: BudgetPayment[];
   invitations: Invitation[];
+  rsvps: Rsvp[];
   guests: Guest[];
   promos: PromoCard[];
   dismissed: Record<string, string>;

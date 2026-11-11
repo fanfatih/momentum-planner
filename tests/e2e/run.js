@@ -364,13 +364,42 @@ const step = async (name, fn) => { try { const r = await fn(); log(r !== false, 
     const err = await page.getByText(/huruf kecil, angka, atau tanda hubung/).isVisible();
     return filled && err;
   });
-  await step('undangan: simpan isi lengkap, tetap ada setelah muat ulang', async () => {
+  await step('undangan: simpan isi lengkap dan aktifkan, tetap ada setelah muat ulang', async () => {
     await page.getByLabel('Nama di alamat').fill('aulia-raka-bogor');
     await page.getByLabel('Jam').first().fill('08.00 WIB');
-    await btn('Tambah rekening').click(); await page.getByLabel('Nomor rekening').fill('1234567890');
+    await page.getByLabel('Nama tempat').first().fill('Gedung Uji');
+    await btn('Tambah rekening').click(); await page.getByLabel('Nomor rekening').fill('1234567890'); await page.getByLabel('Bank atau e-wallet').fill('BCA');
+    await page.getByLabel(/Aktifkan undangan/).check();
     await btn('Simpan isi undangan').click(); await page.getByText('Isi undangan disimpan.').waitFor();
     await page.reload(); await page.getByRole('heading', { name: 'Alamat undangan' }).waitFor();
-    return (await page.getByLabel('Nama di alamat').inputValue()) === 'aulia-raka-bogor' && (await page.getByLabel('Nomor rekening').inputValue()) === '1234567890';
+    return (await page.getByLabel('Nama di alamat').inputValue()) === 'aulia-raka-bogor' && (await page.getByLabel('Nomor rekening').inputValue()) === '1234567890' && await page.getByLabel(/Aktifkan undangan/).isChecked();
+  });
+  await step('undangan: pratinjau menampilkan undangan dengan label pratinjau', async () => {
+    await page.getByRole('link', { name: 'Pratinjau' }).click(); await page.waitForURL('**/pratinjau-undangan');
+    await page.getByRole('heading', { name: 'Konfirmasi kehadiran' }).waitFor();
+    return await page.getByText(/Pratinjau\. Hanya kamu/).isVisible() && await btn('Pratinjau: pengiriman dimatikan').isDisabled();
+  });
+  await step('undangan publik: nama tamu dari ?to=, acara, peta, rekening', async () => {
+    await page.goto(BASE + '/u/aulia-raka-bogor?to=Budi%20Santoso'); await page.getByRole('heading', { name: 'Konfirmasi kehadiran' }).waitFor();
+    const ok = await page.getByText('Kepada Yth.').isVisible() && await page.getByText('Budi Santoso', { exact: true }).first().isVisible()
+      && await page.getByText('Gedung Uji').isVisible() && await page.getByText('1234567890').isVisible()
+      && (await page.getByRole('link', { name: 'Buka peta' }).first().getAttribute('href')).startsWith('https://www.google.com/maps/search/');
+    return ok && (await overflow()) <= 0;
+  });
+  await page.screenshot({ path: 'tests/e2e/shots/16-undangan.png', fullPage: true });
+  await step('undangan publik: RSVP wajib nama, lalu terkirim dan ucapan tampil', async () => {
+    await page.getByLabel('Nama', { exact: true }).fill(''); await btn('Kirim konfirmasi').click();
+    const err = await page.getByText('Isi namamu dulu.').isVisible();
+    await page.getByLabel('Nama', { exact: true }).fill('Budi Santoso'); await page.getByLabel(/Ucapan dan doa/).fill('Selamat menempuh hidup baru');
+    await btn('Kirim konfirmasi').click(); await page.getByText('Terima kasih, Budi Santoso').waitFor();
+    return err && await page.getByText('Selamat menempuh hidup baru').isVisible();
+  });
+  await step('undangan publik: alamat tidak dikenal -> halaman tidak ditemukan tanpa data', async () => {
+    await page.goto(BASE + '/u/tidak-ada-undangan'); return await page.getByRole('heading', { name: 'Undangan tidak ditemukan' }).isVisible();
+  });
+  await step('undangan: respons tamu tampil di editor pasangan', async () => {
+    await page.goto(BASE + '/undangan'); await page.getByRole('heading', { name: 'Respons tamu' }).waitFor();
+    return await page.getByText(/1 konfirmasi hadir \(1 orang\)/).isVisible() && await page.getByText('Selamat menempuh hidup baru').isVisible();
   });
   await step('beranda: baris Undangan digital menunjukkan isi tersimpan', async () => {
     await page.goto(BASE + '/beranda'); return await page.getByRole('link', { name: /Undangan digital/ }).getByText('Isi undangan tersimpan').isVisible();
