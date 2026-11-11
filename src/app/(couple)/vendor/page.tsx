@@ -93,7 +93,7 @@ function MyVendorForm({ item, wedding, onClose }: { item: WeddingVendor; wedding
             icon="wallet"
             onClick={() => {
               saveWeddingVendor({ ...item, status, note: note.trim() });
-              saveBudget({ weddingId: wedding.id, category: budgetLabel, planned: 0, actual: 0, paid: 0 });
+              saveBudget({ weddingId: wedding.id, category: budgetLabel, planned: 0, actual: 0 });
               toast("Ditambahkan ke budget. Isi angkanya di tab Budget.");
               onClose();
             }}

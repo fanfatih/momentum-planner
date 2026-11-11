@@ -112,7 +112,7 @@ const step = async (name, fn) => { try { const r = await fn(); log(r !== false, 
 
   // D. Vendor dan venue
   await step('nav bawah: Vendor', async () => { await nav('Vendor'); await page.waitForURL('**/vendor'); });
-  await step('vendor: simpan rekomendasi', async () => { await page.locator('li', { hasText: 'Catering Contoh B' }).getByRole('button', { name: 'Simpan' }).click(); await page.waitForTimeout(150); return await page.locator('li', { hasText: 'Catering Contoh B' }).getByText('Tersimpan').isVisible(); });
+  await step('vendor: simpan rekomendasi', async () => { await page.locator('li', { hasText: 'Catering Contoh B' }).getByRole('button', { name: 'Simpan', exact: true }).click(); await page.waitForTimeout(150); return await page.locator('li', { hasText: 'Catering Contoh B' }).getByText('Tersimpan').isVisible(); });
   await step('vendor: ubah status Deal dan tambah ke budget', async () => {
     await page.getByRole('button', { name: /Catering Contoh B/ }).first().click(); await dialog().waitFor();
     await dialog().getByRole('button', { name: 'Deal', exact: true }).click();
@@ -150,21 +150,44 @@ const step = async (name, fn) => { try { const r = await fn(); log(r !== false, 
 
   // E. Budget
   await step('nav bawah: Budget, pos dari vendor deal ada', async () => { await nav('Budget'); await page.waitForURL('**/budget'); return await page.getByRole('button', { name: /Catering: Catering Contoh B/ }).isVisible(); });
-  await step('budget: isi rencana, aktual, DP -> tag lebih dari rencana', async () => {
+  await step('budget: isi rencana dan aktual -> tag lebih dari rencana', async () => {
     await page.getByRole('button', { name: /Catering: Catering Contoh B/ }).click(); await dialog().waitFor();
-    await dialog().getByLabel('Rencana').fill('5000000'); await dialog().getByLabel('Aktual').fill('6000000'); await dialog().getByLabel(/Sudah dibayar/).fill('1000000');
+    await dialog().getByLabel('Rencana').fill('5000000'); await dialog().getByLabel('Aktual').fill('6000000');
     await dialog().getByRole('button', { name: 'Simpan perubahan' }).click(); await page.waitForTimeout(200);
     return await page.getByText(/Lebih Rp\s?1\.000\.000 dari rencana/).isVisible();
+  });
+  await step('budget: catat pembayaran oleh pengantin pria -> muncul di riwayat dan ringkasan', async () => {
+    await page.getByRole('button', { name: /Catering: Catering Contoh B/ }).click(); await dialog().waitFor();
+    await dialog().getByRole('button', { name: 'Catat pembayaran' }).click();
+    await dialog().getByRole('button', { name: 'Raka', exact: true }).click();
+    await dialog().getByRole('button', { name: 'Simpan', exact: true }).click(); const err = await dialog().getByText('Isi jumlah pembayaran.').isVisible();
+    await dialog().getByLabel('Jumlah dibayar').fill('1000000'); await dialog().getByLabel('Catatan (opsional)').fill('DP uji');
+    await dialog().getByRole('button', { name: 'Simpan', exact: true }).click(); await page.waitForTimeout(200);
+    const row = await dialog().getByText(/dibayar Raka · DP uji/).isVisible();
+    await page.keyboard.press('Escape'); await page.waitForTimeout(200);
+    const summary = await page.getByLabel('Ringkasan budget').getByText('Rp 5.000.000', { exact: false }).first().isVisible();
+    return err && row && summary;
   });
   await step('budget: sisa total terhitung benar', async () => {
     // Venue 32jt-10jt = 22jt, Catering B 6jt-1jt = 5jt -> 27jt
     const t = await page.getByLabel('Ringkasan budget').locator('p').nth(1).textContent(); return /27\.000\.000/.test(t) ? t.trim() : false;
   });
-  await step('budget: tambah pos kosong -> validasi, lalu simpan', async () => {
+  await step('budget: riwayat pembayaran tampil di halaman, hapus pembayaran mengembalikan sisa', async () => {
+    const listed = await page.getByRole('heading', { name: 'Riwayat pembayaran' }).first().isVisible();
+    await page.getByRole('button', { name: /Catering: Catering Contoh B/ }).first().click(); await dialog().waitFor();
+    await dialog().getByRole('button', { name: /^Hapus pembayaran/ }).click(); await page.waitForTimeout(200);
+    await page.keyboard.press('Escape'); await page.waitForTimeout(200);
+    const t = await page.getByLabel('Ringkasan budget').locator('p').nth(1).textContent();
+    return listed && /28\.000\.000/.test(t);
+  });
+  await step('budget: tambah pos kosong -> validasi, lalu simpan dan sheet lanjut ke riwayat', async () => {
     await btn('Tambah pos budget').click(); await dialog().waitFor();
     await dialog().getByRole('button', { name: 'Tambah pos budget' }).click(); const err = await dialog().getByText('Isi nama pos budgetnya.').isVisible();
     await dialog().getByLabel('Pos budget').fill('Dekorasi uji'); await dialog().getByRole('button', { name: 'Tambah pos budget' }).click();
-    await page.waitForTimeout(200); return err && await page.getByRole('button', { name: /Dekorasi uji/ }).isVisible();
+    await page.waitForTimeout(250);
+    const stays = await dialog().getByRole('heading', { name: 'Riwayat pembayaran' }).isVisible();
+    await page.keyboard.press('Escape'); await page.waitForTimeout(200);
+    return err && stays && await page.getByRole('button', { name: /Dekorasi uji/ }).isVisible();
   });
   await page.waitForTimeout(400);
   await shot('06-budget');

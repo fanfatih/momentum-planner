@@ -11,6 +11,7 @@ import type {
   AdminAccount,
   AppState,
   BudgetItem,
+  BudgetPayment,
   ChangeRequest,
   ChecklistEntry,
   ChecklistKind,
@@ -176,7 +177,7 @@ export function hydrate() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as AppState;
-      if (parsed && parsed.v === 1 && Array.isArray(parsed.weddings)) state = parsed;
+      if (parsed && parsed.v === 1 && Array.isArray(parsed.weddings)) state = { ...parsed, payments: parsed.payments ?? [] };
       else loadError = "Data tersimpan di perangkat ini tidak dikenali, jadi dimuat ulang dari data contoh.";
     }
   } catch {
@@ -477,15 +478,44 @@ export function removeWeddingVendor(id: string) {
 
 /* Budget */
 
-export function saveBudget(b: Omit<BudgetItem, "id"> & { id?: string }) {
-  const full = { ...b, id: b.id ?? uid("b") } as BudgetItem;
+/** Total "dibayar" tidak diisi manual: dihitung dari riwayat pembayaran (di mode database oleh trigger). */
+export function saveBudget(b: Omit<BudgetItem, "id" | "paid"> & { id?: string }): string {
+  const id = b.id ?? uid("b");
+  const existing = b.id ? state.budget.find((x) => x.id === b.id) : undefined;
+  const full: BudgetItem = { ...b, id, paid: existing?.paid ?? 0 };
   update((s) => (b.id ? { ...s, budget: patchById(s.budget, b.id, full) } : { ...s, budget: [...s.budget, full] }));
   sync((c) => R.upsertRow(c, "budget_items", R.toRow.budget(full)));
+  return id;
 }
 
 export function removeBudget(id: string) {
-  update((s) => ({ ...s, budget: s.budget.filter((b) => b.id !== id) }));
+  update((s) => ({
+    ...s,
+    budget: s.budget.filter((b) => b.id !== id),
+    payments: s.payments.filter((p) => p.budgetId !== id),
+  }));
   sync((c) => R.deleteRows(c, "budget_items", { id }));
+}
+
+export function addPayment(p: Omit<BudgetPayment, "id">) {
+  const full: BudgetPayment = { ...p, id: uid("bp") };
+  update((s) => ({
+    ...s,
+    payments: [...s.payments, full],
+    budget: s.budget.map((b) => (b.id === p.budgetId ? { ...b, paid: b.paid + p.amount } : b)),
+  }));
+  sync((c) => R.insertRow(c, "budget_payments", R.toRow.payment(full)));
+}
+
+export function removePayment(id: string) {
+  const p = state.payments.find((x) => x.id === id);
+  if (!p) return;
+  update((s) => ({
+    ...s,
+    payments: s.payments.filter((x) => x.id !== id),
+    budget: s.budget.map((b) => (b.id === p.budgetId ? { ...b, paid: Math.max(b.paid - p.amount, 0) } : b)),
+  }));
+  sync((c) => R.deleteRows(c, "budget_payments", { id }));
 }
 
 /* Tamu */

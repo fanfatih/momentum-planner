@@ -108,6 +108,19 @@ export interface BudgetItem {
   paid: number;
 }
 
+export type Payer = "bride" | "groom";
+
+/** Satu pembayaran ke vendor untuk sebuah pos budget. */
+export interface BudgetPayment {
+  id: string;
+  weddingId: string;
+  budgetId: string;
+  amount: number;
+  paidOn: string;
+  payer: Payer;
+  note: string;
+}
+
 export interface Guest {
   id: string;
   weddingId: string;
@@ -169,6 +182,7 @@ export interface AppState {
   vendors: Vendor[];
   weddingVendors: WeddingVendor[];
   budget: BudgetItem[];
+  payments: BudgetPayment[];
   guests: Guest[];
   promos: PromoCard[];
   dismissed: Record<string, string>;

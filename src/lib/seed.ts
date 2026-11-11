@@ -2,6 +2,7 @@ import type {
   AdminAccount,
   AppState,
   BudgetItem,
+  BudgetPayment,
   ChecklistTemplate,
   Guest,
   PromoCard,
@@ -164,6 +165,11 @@ const budget: BudgetItem[] = [
   { id: "b-3", weddingId: "w1", category: "Dokumentasi", planned: 12_000_000, actual: 0, paid: 0 },
 ];
 
+const payments: BudgetPayment[] = [
+  { id: "bp-1", weddingId: "w1", budgetId: "b-1", amount: 6_000_000, paidOn: "2026-10-05", payer: "bride", note: "DP venue" },
+  { id: "bp-2", weddingId: "w1", budgetId: "b-1", amount: 4_000_000, paidOn: "2026-11-02", payer: "groom", note: "Cicilan pertama" },
+];
+
 const guests: Guest[] = [
   { id: "g-1", weddingId: "w1", name: "Tamu contoh 1", wa: "", group: "keluarga_wanita", count: 4, status: "diundang" },
   { id: "g-2", weddingId: "w1", name: "Tamu contoh 2", wa: "", group: "keluarga_pria", count: 3, status: "belum" },
@@ -204,6 +210,7 @@ export function seedState(): AppState {
     vendors: structuredClone(vendors),
     weddingVendors: structuredClone(weddingVendors),
     budget: structuredClone(budget),
+    payments: structuredClone(payments),
     guests: structuredClone(guests),
     promos: structuredClone(promos),
     dismissed: {},

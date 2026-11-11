@@ -4,6 +4,7 @@ import type {
   AdminAccount,
   AppState,
   BudgetItem,
+  BudgetPayment,
   ChangeRequest,
   ChecklistEntry,
   ChecklistTemplate,
@@ -41,6 +42,7 @@ export function emptyState(): AppState {
     vendors: [],
     weddingVendors: [],
     budget: [],
+    payments: [],
     guests: [],
     promos: [],
     dismissed: {},
@@ -81,6 +83,7 @@ export async function loadSnapshot(sb: SupabaseClient, userId: string): Promise<
     checklist,
     weddingVendors,
     budget,
+    payments,
     guests,
     favorites,
     requests,
@@ -99,6 +102,7 @@ export async function loadSnapshot(sb: SupabaseClient, userId: string): Promise<
     all(sb, "checklist_items"),
     all(sb, "wedding_vendors"),
     all(sb, "budget_items"),
+    all(sb, "budget_payments"),
     all(sb, "guests"),
     all(sb, "favorites"),
     all(sb, "change_requests"),
@@ -245,6 +249,17 @@ export async function loadSnapshot(sb: SupabaseClient, userId: string): Promise<
           paid: n(x.paid),
         }),
       ),
+      payments: payments.map(
+        (x): BudgetPayment => ({
+          id: s(x.id),
+          weddingId: s(x.wedding_id),
+          budgetId: s(x.budget_id),
+          amount: n(x.amount),
+          paidOn: s(x.paid_on).slice(0, 10),
+          payer: s(x.payer) === "groom" ? "groom" : "bride",
+          note: s(x.note),
+        }),
+      ),
       guests: guests.map(
         (g): Guest => ({
           id: s(g.id),
@@ -324,7 +339,16 @@ export const toRow = {
     category: x.category,
     planned: x.planned,
     actual: x.actual,
-    paid: x.paid,
+    // paid sengaja tidak dikirim: dijaga trigger database dari riwayat pembayaran.
+  }),
+  payment: (x: BudgetPayment) => ({
+    id: x.id,
+    wedding_id: x.weddingId,
+    budget_id: x.budgetId,
+    amount: x.amount,
+    paid_on: x.paidOn,
+    payer: x.payer,
+    note: x.note,
   }),
   guest: (g: Guest) => ({
     id: g.id,
