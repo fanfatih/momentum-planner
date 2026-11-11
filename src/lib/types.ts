@@ -135,12 +135,19 @@ export interface InvitationContent {
   hasResepsi: boolean;
   resepsi: InvitationEvent;
   gifts: InvitationGift[];
+  /** Alamat foto galeri, maksimal MAX_PHOTOS. */
+  photos: string[];
+  /** Alamat file musik latar. Kosong berarti tanpa musik. */
+  musicUrl: string;
+  musicTitle: string;
 }
 
 export interface Invitation {
   weddingId: string;
   slug: string;
   theme: string;
+  /** Tema terkunci setelah dipilih pasangan. Hanya Super Admin yang bisa membuka kunci. */
+  themeLocked: boolean;
   published: boolean;
   content: InvitationContent;
 }

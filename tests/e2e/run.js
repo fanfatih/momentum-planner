@@ -364,17 +364,82 @@ const step = async (name, fn) => { try { const r = await fn(); log(r !== false, 
     const err = await page.getByText(/huruf kecil, angka, atau tanda hubung/).isVisible();
     return filled && err;
   });
-  await step('undangan: simpan isi lengkap dan aktifkan, tetap ada setelah muat ulang', async () => {
+  await step('undangan: simpan isi lengkap dan aktifkan, tetap ada setelah muat ulang, tema belum terkunci', async () => {
     await page.getByLabel('Nama di alamat').fill('aulia-raka-bogor');
     await page.getByLabel('Jam').first().fill('08.00 WIB');
     await page.getByLabel('Nama tempat').first().fill('Gedung Uji');
     await btn('Tambah rekening').click(); await page.getByLabel('Nomor rekening').fill('1234567890'); await page.getByLabel('Bank atau e-wallet').fill('BCA');
     await page.getByLabel(/Aktifkan undangan/).check();
-    const themes = await page.getByRole('radio').count();
-    await page.getByText('Marun Lengkung', { exact: true }).click();
+    const noRadio = (await page.getByRole('radio').count()) === 0;
     await btn('Simpan isi undangan').click(); await page.getByText('Isi undangan disimpan.').waitFor();
     await page.reload(); await page.getByRole('heading', { name: 'Alamat undangan' }).waitFor();
-    return themes === 3 && (await page.getByLabel('Nama di alamat').inputValue()) === 'aulia-raka-bogor' && (await page.getByLabel('Nomor rekening').inputValue()) === '1234567890' && await page.getByLabel(/Aktifkan undangan/).isChecked() && await page.getByRole('radio', { name: /Marun Lengkung/ }).isChecked();
+    const card = page.getByRole('region', { name: 'Tema undangan' });
+    return noRadio && (await page.getByLabel('Nama di alamat').inputValue()) === 'aulia-raka-bogor' && (await page.getByLabel('Nomor rekening').inputValue()) === '1234567890' && await page.getByLabel(/Aktifkan undangan/).isChecked()
+      && await card.getByText('Blush Oval').isVisible() && (await card.getByText('Terkunci').count()) === 0;
+  });
+  await step('tema: katalog menampilkan 5 tema, filter gaya bekerja', async () => {
+    await page.goto(BASE + '/undangan/tema'); await page.getByRole('heading', { name: 'Tema undangan' }).first().waitFor();
+    const all = await page.locator('li[data-theme-id]').count();
+    await page.getByRole('group', { name: 'Saring menurut gaya' }).getByRole('button', { name: 'Gelap' }).click();
+    const dark = await page.locator('li[data-theme-id]').evaluateAll((els) => els.map((e) => e.getAttribute('data-theme-id')));
+    await page.getByRole('group', { name: 'Saring menurut gaya' }).getByRole('button', { name: 'Semua' }).click();
+    return all === 5 && dark.length === 1 && dark[0] === 'malam' && (await overflow()) <= 0;
+  });
+  await page.goto(BASE + '/undangan/tema'); await page.waitForTimeout(900); await shot('20-katalog-tema');
+  await step('tema: pratinjau ?tema=marun memakai data pasangan dan belum mengunci', async () => {
+    await page.goto(BASE + '/pratinjau-undangan?tema=marun'); await page.getByRole('heading', { name: 'Konfirmasi kehadiran' }).waitFor();
+    const marun = (await page.locator('main.inv-marun').count()) === 1 && await page.getByText('Aulia').first().isVisible();
+    await page.getByRole('link', { name: 'Daftar tema' }).click(); await page.waitForURL('**/undangan/tema');
+    return marun && (await page.getByText('Terkunci', { exact: true }).count()) === 0;
+  });
+  await step('tema: pilih Marun lewat katalog -> konfirmasi -> terkunci', async () => {
+    const li = page.locator('li[data-theme-id="marun"]');
+    await li.getByRole('button', { name: 'Pilih tema ini' }).click(); await dialog().waitFor();
+    await dialog().getByRole('button', { name: 'Pilih dan kunci' }).click(); await page.getByText('Tema Marun Lengkung dipilih dan dikunci.').waitFor();
+    return await li.getByText('Terkunci', { exact: true }).isVisible() && (await page.getByRole('button', { name: 'Pilih tema ini' }).count()) === 0;
+  });
+  await step('tema: setelah terkunci tema lain hanya bisa diminta lewat WhatsApp', async () => {
+    const li = page.locator('li[data-theme-id="malam"]');
+    const href = decodeURIComponent(await li.getByRole('link', { name: 'Minta tema ini' }).getAttribute('href'));
+    await page.goto(BASE + '/pratinjau-undangan?tema=zaitun'); await page.getByRole('heading', { name: 'Konfirmasi kehadiran' }).waitFor();
+    const prevHref = decodeURIComponent(await page.getByRole('link', { name: 'Minta tema ini' }).getAttribute('href'));
+    return href.startsWith('https://wa.me/') && href.includes('Marun Lengkung') && href.includes('Malam Emas')
+      && prevHref.includes('Hijau Zaitun') && (await page.locator('main.inv-zaitun').count()) === 1 && (await btn('Pilih tema ini').count()) === 0;
+  });
+  await step('tema: editor menunjukkan Terkunci dan tidak ada cara ganti sendiri', async () => {
+    await page.goto(BASE + '/undangan'); await page.getByRole('heading', { name: 'Alamat undangan' }).waitFor();
+    const card = page.getByRole('region', { name: 'Tema undangan' });
+    return await card.getByText('Marun Lengkung').isVisible() && await card.getByText('Terkunci').isVisible();
+  });
+  await step('tema: simpan ulang isi undangan tidak melepas kunci atau mengganti tema', async () => {
+    await page.getByLabel('Jam').first().fill('08.30 WIB'); await btn('Simpan isi undangan').click(); await page.getByText('Isi undangan disimpan.').waitFor();
+    await page.reload(); await page.getByRole('heading', { name: 'Alamat undangan' }).waitFor();
+    const card = page.getByRole('region', { name: 'Tema undangan' });
+    return await card.getByText('Marun Lengkung').isVisible() && await card.getByText('Terkunci').isVisible();
+  });
+  await step('galeri: tolak file bukan foto, unggah 3 foto, hapus satu, tambah lagi', async () => {
+    const pick = page.getByLabel('Pilih foto galeri');
+    await pick.setInputFiles('tests/e2e/fixtures/catatan.txt');
+    const rejected = await page.getByText('Pakai foto JPG, PNG, atau WebP.').isVisible();
+    await pick.setInputFiles(['tests/e2e/fixtures/foto-1.jpg', 'tests/e2e/fixtures/foto-2.jpg', 'tests/e2e/fixtures/foto-3.jpg']);
+    await page.locator('img[alt^="Foto galeri"]').nth(2).waitFor({ timeout: 15000 });
+    await btn('Hapus foto 3').click();
+    const two = (await page.locator('img[alt^="Foto galeri"]').count()) === 2;
+    await page.getByLabel('Pilih foto galeri').setInputFiles('tests/e2e/fixtures/foto-3.jpg');
+    await page.locator('img[alt^="Foto galeri"]').nth(2).waitFor({ timeout: 15000 });
+    const size = await page.locator('img[alt^="Foto galeri"]').first().evaluate((el) => el.src.length);
+    return rejected && two && size < 400000 ? 'foto terkompres ' + Math.round(size / 1024) + ' KB' : false;
+  });
+  await step('musik: tolak bukan mp3, unggah mp3, judul terisi, tersimpan setelah muat ulang', async () => {
+    const pick = page.getByLabel('Pilih file musik');
+    await pick.setInputFiles('tests/e2e/fixtures/catatan.txt');
+    const rejected = await page.getByText('Pakai file MP3 atau M4A.').isVisible();
+    await pick.setInputFiles('tests/e2e/fixtures/musik.mp3');
+    await page.getByLabel('Dengarkan musik latar').waitFor();
+    const title = await page.getByLabel('Judul lagu (opsional)').inputValue();
+    await btn('Simpan isi undangan').click(); await page.getByText('Isi undangan disimpan.').waitFor();
+    await page.reload(); await page.getByRole('heading', { name: 'Alamat undangan' }).waitFor();
+    return rejected && title === 'musik' && (await page.locator('img[alt^="Foto galeri"]').count()) === 3 && await page.getByLabel('Dengarkan musik latar').isVisible();
   });
   await step('undangan: pratinjau menampilkan undangan dengan label pratinjau', async () => {
     await page.getByRole('link', { name: 'Pratinjau' }).click(); await page.waitForURL('**/pratinjau-undangan');
@@ -388,6 +453,21 @@ const step = async (name, fn) => { try { const r = await fn(); log(r !== false, 
       && (await page.locator('main.inv-marun').count()) === 1
       && (await page.getByRole('link', { name: 'Buka peta' }).first().getAttribute('href')).startsWith('https://www.google.com/maps/search/');
     return ok && (await overflow()) <= 0;
+  });
+  await step('undangan publik: galeri tampil 3 foto, musik mulai saat Buka undangan dan bisa dijeda', async () => {
+    const dock = page.getByRole('button', { name: /^Putar musik/ });
+    const idle = await dock.isVisible() && await page.evaluate(() => document.querySelector('audio').paused);
+    await page.getByRole('link', { name: 'Buka undangan' }).click();
+    await page.waitForFunction(() => document.querySelector('audio') && !document.querySelector('audio').paused, null, { timeout: 5000 });
+    const playingBtn = page.getByRole('button', { name: /^Jeda musik/ });
+    const on = await playingBtn.isVisible() && (await playingBtn.getAttribute('aria-pressed')) === 'true';
+    await playingBtn.click();
+    const paused = await page.evaluate(() => document.querySelector('audio').paused);
+    await page.locator('#galeri').scrollIntoViewIfNeeded(); await page.waitForTimeout(1300);
+    const imgs = await page.locator('#galeri img[alt*="galeri pernikahan"]').count();
+    const loaded = await page.locator('#galeri img').evaluateAll((els) => els.every((e) => e.complete && e.naturalWidth > 0));
+    await page.screenshot({ path: 'tests/e2e/shots/21-galeri.png' });
+    return idle && on && paused && imgs === 3 && loaded && (await overflow()) <= 0;
   });
   await page.screenshot({ path: 'tests/e2e/shots/16-undangan.png', fullPage: true });
   await step('undangan publik: RSVP wajib nama, lalu terkirim dan ucapan tampil', async () => {
@@ -423,6 +503,26 @@ const step = async (name, fn) => { try { const r = await fn(); log(r !== false, 
     const msg = await dialog().getByLabel('Pesan WhatsApp').inputValue();
     const ok = msg.includes('/u/aulia-raka-bogor?to=') && await dialog().getByRole('button', { name: 'Salin link' }).isVisible();
     await page.keyboard.press('Escape'); return ok;
+  });
+  await page.goto(BASE + '/masuk'); await btn('Super Admin', false).click(); await page.waitForURL('**/admin');
+  await step('super admin: ganti tema ke Hijau Zaitun dan kunci, lalu buka kunci', async () => {
+    await page.goto(BASE + '/admin/proyek/w1'); await page.getByText('Tema saat ini:').waitFor();
+    const before = await page.getByText('Tema saat ini:').textContent();
+    await page.getByLabel('Tema', { exact: true }).selectOption({ label: 'Hijau Zaitun' });
+    await btn('Ganti dan kunci').click(); await page.getByText('Tema diganti dan dikunci.').waitFor();
+    const after = await page.getByText('Tema saat ini:').textContent();
+    await btn('Buka kunci').click(); await page.getByText('Kunci dibuka, pasangan bisa memilih tema lagi.').waitFor();
+    const open = await page.getByText('Tema saat ini:').textContent();
+    return before.includes('Marun Lengkung') && before.includes('terkunci') && after.includes('Hijau Zaitun') && after.includes('terkunci') && open.includes('Hijau Zaitun') && open.includes('belum dikunci');
+  });
+  await enter('Pengantin wanita', '/beranda');
+  await step('tema: setelah admin membuka kunci pasangan bisa memilih lagi', async () => {
+    await page.goto(BASE + '/undangan/tema'); await page.getByRole('heading', { name: 'Tema undangan' }).first().waitFor();
+    const li = page.locator('li[data-theme-id="wildflower"]');
+    await li.getByRole('button', { name: 'Pilih tema ini' }).click(); await dialog().waitFor();
+    await dialog().getByRole('button', { name: 'Pilih dan kunci' }).click(); await page.getByText('Tema Bunga Liar dipilih dan dikunci.').waitFor();
+    await page.goto(BASE + '/u/aulia-raka-bogor'); await page.getByRole('heading', { name: 'Konfirmasi kehadiran' }).waitFor();
+    return (await page.locator('main.inv-wildflower').count()) === 1;
   });
   await page.goto(BASE + '/masuk'); await page.waitForTimeout(100);
 

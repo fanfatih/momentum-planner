@@ -8,8 +8,12 @@ import { PageHeader } from "@/components/shell";
 import { Button, buttonClass, Card, cx, Notice, Reveal, Sheet, Tag, TextAreaField, TextField, toast } from "@/components/ui";
 import { coupleLabel, isDummyWa, waLink } from "@/lib/format";
 import { useCurrentWedding } from "@/lib/guard";
-import { contentFromWedding, SLUG_PATTERN, suggestSlug } from "@/lib/invitation";
-import { resolveTheme, THEMES, type ThemeId, type ThemeInfo } from "@/lib/invitation-themes";
+import { contentFromWedding, normalizeContent, SLUG_PATTERN, suggestSlug } from "@/lib/invitation";
+import { MusicFields, PhotoFields } from "@/components/invitation/media-fields";
+import { removeMedia } from "@/lib/media";
+import { resolveTheme } from "@/lib/invitation-themes";
+import { ThemeMini } from "@/components/invitation/ThemeMini";
+import { useThemeState } from "@/components/invitation/theme-choice";
 import { removeRsvp, saveInvitation, useApp } from "@/lib/store";
 import type { Invitation, InvitationContent, InvitationEvent, Wedding } from "@/lib/types";
 import { IconButton } from "@/components/ui";
@@ -19,7 +23,8 @@ const FEATURES = [
   "Link personal per tamu, nama tamu tampil di undangan",
   "RSVP dan ucapan dari tamu",
   "Bagikan lewat WhatsApp dari nomor kalian sendiri",
-  "Tiga pilihan tema: Blush Oval, Marun Lengkung, dan Bunga Liar",
+  "Katalog tema yang bisa dipratinjau dengan data kalian sendiri, dengan animasi saat digulir",
+  "Galeri foto dan musik latar",
 ];
 
 function InquirySheet({ open, onClose, wedding }: { open: boolean; onClose: () => void; wedding: Wedding }) {
@@ -167,85 +172,41 @@ function RsvpSummary({ weddingId }: { weddingId: string }) {
   );
 }
 
-function ThemeThumb({ t }: { t: ThemeInfo }) {
+function ThemeCard({ wedding, existing }: { wedding: Wedding; existing: Invitation | null }) {
+  const { content, locked, current } = useThemeState(wedding);
+  const theme = current ?? resolveTheme(null);
   return (
-    <svg aria-hidden="true" viewBox="0 0 60 88" className="h-[88px] w-[60px] shrink-0 rounded-[4px] border border-black/10">
-      <rect width="60" height="88" fill={t.bg} />
-      {t.id === "blush" && (
-        <>
-          <rect x="9" y="8" width="42" height="72" rx="21" fill="#fff" />
-          <circle cx="47" cy="12" r="7" fill="#fff" stroke="#efc9d0" />
-          <circle cx="47" cy="12" r="2.6" fill={t.accent} />
-          <circle cx="13" cy="76" r="7" fill="#fff" stroke="#efc9d0" />
-          <circle cx="13" cy="76" r="2.6" fill={t.accent} />
-          <rect x="21" y="34" width="18" height="3" rx="1.5" fill={t.ink} />
-          <rect x="24" y="41" width="12" height="3" rx="1.5" fill={t.ink} />
-        </>
-      )}
-      {t.id === "marun" && (
-        <>
-          <rect width="11" height="88" fill="#7d1c2d" />
-          <path d="M16 84V34a19 19 0 0 1 38 0V84Z" fill="none" stroke={t.accent} strokeWidth="1.4" />
-          <circle cx="9" cy="10" r="6" fill="#8c2236" stroke="#d9aa4f" strokeWidth="0.8" />
-          <circle cx="52" cy="78" r="6" fill="#8c2236" stroke="#d9aa4f" strokeWidth="0.8" />
-          <rect x="26" y="38" width="18" height="3" rx="1.5" fill={t.ink} />
-          <rect x="29" y="45" width="12" height="3" rx="1.5" fill={t.ink} />
-        </>
-      )}
-      {t.id === "wildflower" && (
-        <>
-          <path d="M0 40C20 48 34 66 60 82V88H0Z" fill="#f6f5f3" />
-          <path d="M0 40C20 48 34 66 60 82" fill="none" stroke="#b79556" strokeWidth="1" />
-          <circle cx="50" cy="30" r="6" fill="#d79bb4" />
-          <circle cx="50" cy="30" r="2" fill="#5b3470" />
-          <path d="M60 70C54 60 52 48 50 36" stroke="#6a8d56" strokeWidth="1.4" fill="none" />
-          <rect x="14" y="14" width="22" height="3" rx="1.5" fill={t.ink} />
-          <rect x="14" y="21" width="16" height="3" rx="1.5" fill={t.ink} />
-        </>
-      )}
-    </svg>
-  );
-}
-
-function ThemePicker({ value, onChange }: { value: ThemeId; onChange: (id: ThemeId) => void }) {
-  return (
-    <fieldset className="m-0 space-y-3 border-0 p-0">
-      <legend className="pb-3 font-serif text-[19px] font-semibold">Tema undangan</legend>
-      {THEMES.map((t) => (
-        <label
-          key={t.id}
-          className={cx(
-            "flex min-h-11 cursor-pointer items-center gap-3 rounded-[12px] border bg-paper p-3 transition-colors duration-150",
-            value === t.id ? "border-brand ring-2 ring-brand" : "border-line hover:bg-cream-deep",
-          )}
-        >
-          <input
-            type="radio"
-            name="tema"
-            value={t.id}
-            checked={value === t.id}
-            onChange={() => onChange(t.id)}
-            className="sr-only"
-          />
-          <ThemeThumb t={t} />
-          <span className="min-w-0">
-            <span className="block font-semibold text-ink">{t.name}</span>
-            <span className="block text-[14px] text-ink-soft">{t.blurb}</span>
-          </span>
-        </label>
-      ))}
-      <p className="m-0 text-[14px] text-ink-soft">Pratinjau menampilkan tema yang sudah disimpan, jadi simpan dulu setelah ganti tema.</p>
-    </fieldset>
+    <section aria-label="Tema undangan" className="space-y-3">
+      <h2 className="text-[19px]">Tema undangan</h2>
+      <div className="flex items-start gap-3 rounded-[12px] border border-line bg-paper p-3">
+        <ThemeMini theme={theme.id} content={existing?.content ?? content} width={84} />
+        <div className="min-w-0">
+          <p className="m-0 flex flex-wrap items-center gap-2 font-semibold text-ink">
+            {theme.name}
+            {locked && <Tag tone="leaf">Terkunci</Tag>}
+          </p>
+          <p className="m-0 mt-1 text-[14px] text-ink-soft">
+            {locked
+              ? "Tema ini sudah dipilih dan dikunci. Untuk tema lain, minta ke admin."
+              : current
+                ? "Tema sementara. Kunci dengan memilihnya di katalog."
+                : "Belum memilih tema. Lihat pratinjau semua tema di katalog."}
+          </p>
+          <Link href="/undangan/tema" className={`${buttonClass("secondary")} mt-3`}>
+            {locked ? "Lihat katalog tema" : "Lihat dan pilih tema"}
+          </Link>
+        </div>
+      </div>
+    </section>
   );
 }
 
 function Editor({ wedding, existing }: { wedding: Wedding; existing: Invitation | null }) {
   const [slug, setSlug] = useState(existing?.slug ?? suggestSlug(wedding));
-  const [c, setC] = useState<InvitationContent>(existing?.content ?? contentFromWedding(wedding));
+  const [c, setC] = useState<InvitationContent>(() => normalizeContent(existing?.content ?? contentFromWedding(wedding)));
   const [slugError, setSlugError] = useState("");
   const [busy, setBusy] = useState(false);
   const [published, setPublished] = useState(existing?.published ?? false);
-  const [theme, setTheme] = useState<ThemeId>(resolveTheme(existing?.theme).id);
   const set = (patch: Partial<InvitationContent>) => setC((prev) => ({ ...prev, ...patch }));
 
   const setGift = (i: number, patch: Partial<InvitationContent["gifts"][number]>) =>
@@ -262,7 +223,8 @@ function Editor({ wedding, existing }: { wedding: Wedding; existing: Invitation 
     const result = await saveInvitation({
       weddingId: wedding.id,
       slug: clean,
-      theme,
+      theme: resolveTheme(existing?.theme).id,
+      themeLocked: existing?.themeLocked ?? false,
       published,
       content: { ...c, gifts: c.gifts.filter((g) => g.number.trim()) },
     });
@@ -273,6 +235,10 @@ function Editor({ wedding, existing }: { wedding: Wedding; existing: Invitation 
     }
     if (result === "ok") {
       setSlug(clean);
+      // File yang sudah tidak dipakai dihapus setelah isi tersimpan, supaya undangan yang sudah aktif tidak kehilangan foto lebih dulu.
+      const old = normalizeContent(existing?.content);
+      const keep = new Set([...c.photos, c.musicUrl]);
+      void removeMedia([...old.photos, old.musicUrl].filter((u) => u && !keep.has(u)));
       toast("Isi undangan disimpan.");
     }
   };
@@ -302,7 +268,7 @@ function Editor({ wedding, existing }: { wedding: Wedding; existing: Invitation 
         )}
       </section>
 
-      <ThemePicker value={theme} onChange={setTheme} />
+      <ThemeCard wedding={wedding} existing={existing} />
 
       <section className="space-y-3" aria-label="Alamat undangan">
         <h2 className="text-[19px]">Alamat undangan</h2>
@@ -357,6 +323,16 @@ function Editor({ wedding, existing }: { wedding: Wedding; existing: Invitation 
           Ada resepsi terpisah dari akad
         </label>
         {c.hasResepsi && <EventFields title="Resepsi" value={c.resepsi} onChange={(resepsi) => set({ resepsi })} />}
+      </section>
+
+      <section aria-label="Galeri foto" className="space-y-3">
+        <h2 className="text-[19px]">Galeri foto (opsional)</h2>
+        <PhotoFields weddingId={wedding.id} photos={c.photos} onChange={(photos) => set({ photos })} />
+      </section>
+
+      <section aria-label="Musik latar" className="space-y-3">
+        <h2 className="text-[19px]">Musik latar (opsional)</h2>
+        <MusicFields weddingId={wedding.id} url={c.musicUrl} title={c.musicTitle} onChange={(m) => set(m)} />
       </section>
 
       <section aria-label="Amplop digital" className="space-y-3">

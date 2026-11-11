@@ -458,3 +458,170 @@ export function PinGold({ className }: { className?: string }) {
     </svg>
   );
 }
+
+/* ---------- Zaitun: dahan eukaliptus ---------- */
+
+type V = [number, number];
+const bez = (t: number, a: V, b: V, c: V): V => [
+  (1 - t) * (1 - t) * a[0] + 2 * (1 - t) * t * b[0] + t * t * c[0],
+  (1 - t) * (1 - t) * a[1] + 2 * (1 - t) * t * b[1] + t * t * c[1],
+];
+const bezAngle = (t: number, a: V, b: V, c: V) => {
+  const dx = 2 * (1 - t) * (b[0] - a[0]) + 2 * t * (c[0] - b[0]);
+  const dy = 2 * (1 - t) * (b[1] - a[1]) + 2 * t * (c[1] - b[1]);
+  return (Math.atan2(dy, dx) * 180) / Math.PI;
+};
+
+const ROUND_LEAF = "M0 0C-.62 -.18 -.7 -.78 0 -1C.7 -.78 .62 -.18 0 0Z";
+
+function Eucalyptus({ a, b, c, n, size, id, seed = 0 }: { a: V; b: V; c: V; n: number; size: number; id: string; seed?: number }) {
+  const leaves = Array.from({ length: n }, (_, i) => {
+    const t = 0.1 + (0.9 * i) / n;
+    const [x, y] = bez(t, a, b, c);
+    const ang = bezAngle(t, a, b, c);
+    const side = i % 2 ? 1 : -1;
+    const r = size * (1.15 - t * 0.55) * (0.9 + ((i * 37 + seed) % 10) / 50);
+    return { x, y, r, rot: ang + 90 + side * (58 + ((i * 13 + seed) % 14)), tone: (i + seed) % 3 };
+  });
+  const end = bez(1, a, b, c);
+  return (
+    <g>
+      <path d={`M${a[0]} ${a[1]}Q${b[0]} ${b[1]} ${c[0]} ${c[1]}`} stroke="#6d835f" strokeWidth={2} fill="none" strokeLinecap="round" />
+      {leaves.map((l, i) => (
+        <g key={i} transform={at({ x: l.x, y: l.y, r: l.r, rot: l.rot })}>
+          <path d={ROUND_LEAF} fill={`url(#${id}t${l.tone})`} stroke="#5f7552" strokeOpacity={0.35} strokeWidth={0.014} />
+          <path d="M0 -.04L0 -.82" stroke="#f0f4e8" strokeOpacity={0.5} strokeWidth={0.016} />
+        </g>
+      ))}
+      <g transform={at({ x: end[0], y: end[1], r: size * 0.7, rot: bezAngle(1, a, b, c) + 90 })}>
+        <path d={ROUND_LEAF} fill={`url(#${id}t1)`} />
+      </g>
+    </g>
+  );
+}
+
+function ZaitunDefs({ id }: { id: string }) {
+  const g = (k: number, c0: string, c1: string) => (
+    <linearGradient id={`${id}t${k}`} x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stopColor={c0} />
+      <stop offset="1" stopColor={c1} />
+    </linearGradient>
+  );
+  return (
+    <defs>
+      {g(0, "#6f8a62", "#a9bf9b")}
+      {g(1, "#86a078", "#c4d5b8")}
+      {g(2, "#5c7650", "#93ad85")}
+      {filterShadow(`${id}sh`, "#3a4d33", 0.22, 2.5)}
+    </defs>
+  );
+}
+
+/** Dua dahan eukaliptus yang menjuntai dari sudut kiri atas. Dicerminkan dengan CSS untuk sudut kanan. */
+export function ZaitunHang({ className, style }: { className?: string; style?: CSSProperties }) {
+  const id = uid(useId());
+  return (
+    <Svg viewBox="0 0 220 470" className={className} style={style}>
+      <ZaitunDefs id={id} />
+      <g filter={`url(#${id}sh)`}>
+        <Eucalyptus a={[40, -10]} b={[130, 120]} c={[70, 400]} n={16} size={32} id={id} seed={1} />
+        <Eucalyptus a={[-6, 40]} b={[50, 140]} c={[24, 300]} n={10} size={26} id={id} seed={4} />
+      </g>
+    </Svg>
+  );
+}
+
+/** Tangkai kecil untuk pemisah bagian. */
+export function ZaitunSprig({ className, style }: { className?: string; style?: CSSProperties }) {
+  const id = uid(useId());
+  return (
+    <Svg viewBox="0 0 200 46" className={className} style={style}>
+      <ZaitunDefs id={id} />
+      <path d="M14 26H84M116 26H186" stroke="#9db18f" strokeWidth={1} />
+      <path d="M100 42V12" stroke="#6d835f" strokeWidth={1.6} />
+      {[
+        { x: 100, y: 12, r: 20, rot: 0, t: 1 },
+        { x: 100, y: 28, r: 22, rot: -52, t: 0 },
+        { x: 100, y: 28, r: 22, rot: 52, t: 2 },
+        { x: 100, y: 40, r: 17, rot: -82, t: 2 },
+        { x: 100, y: 40, r: 17, rot: 82, t: 0 },
+      ].map((l, i) => (
+        <g key={i} transform={at(l)}>
+          <path d={ROUND_LEAF} fill={`url(#${id}t${l.t})`} />
+        </g>
+      ))}
+    </Svg>
+  );
+}
+
+/* ---------- Malam Emas: garis emas ---------- */
+
+const GOLD = "#d4af6a";
+
+function GoldLeaf({ p }: { p: Pos }) {
+  return (
+    <g transform={at(p)}>
+      <path d="M0 0C-.3 -.2 -.34 -.7 0 -1C.34 -.7 .3 -.2 0 0Z" fill="none" stroke={GOLD} strokeWidth={0.035} />
+      <path d="M0 -.05L0 -.85" stroke={GOLD} strokeWidth={0.02} />
+    </g>
+  );
+}
+
+/** Ranting daun emas berbentuk garis, simetris, untuk puncak lengkung sampul. */
+export function GoldCrest({ className, style }: { className?: string; style?: CSSProperties }) {
+  const sideLeaves = [
+    { x: 100, y: 92, r: 30, rot: -62 },
+    { x: 100, y: 76, r: 28, rot: -50 },
+    { x: 100, y: 60, r: 25, rot: -40 },
+    { x: 100, y: 46, r: 21, rot: -30 },
+  ];
+  return (
+    <Svg viewBox="0 0 200 110" className={className} style={style}>
+      <path d="M100 100V20" stroke={GOLD} strokeWidth={1.4} />
+      {sideLeaves.map((l, i) => (
+        <g key={i}>
+          <GoldLeaf p={l} />
+          <GoldLeaf p={{ ...l, rot: -l.rot }} />
+        </g>
+      ))}
+      <GoldLeaf p={{ x: 100, y: 22, r: 22, rot: 0 }} />
+      <circle cx={100} cy={104} r={3} fill="none" stroke={GOLD} strokeWidth={1.2} />
+      <path d="M20 104H90M110 104H180" stroke={GOLD} strokeWidth={1} />
+    </Svg>
+  );
+}
+
+/** Sulur emas untuk sudut bawah. */
+export function GoldVine({ className, style }: { className?: string; style?: CSSProperties }) {
+  return (
+    <Svg viewBox="0 0 200 200" className={className} style={style}>
+      <path d="M0 200C30 150 40 100 90 70C120 52 160 50 200 20" stroke={GOLD} strokeWidth={1.3} fill="none" />
+      <path d="M0 160C20 130 30 110 60 96" stroke={GOLD} strokeWidth={1} fill="none" />
+      {[
+        { x: 22, y: 160, r: 36, rot: 40 },
+        { x: 44, y: 118, r: 40, rot: 55 },
+        { x: 80, y: 84, r: 42, rot: 62 },
+        { x: 118, y: 62, r: 38, rot: 78 },
+        { x: 156, y: 44, r: 34, rot: 92 },
+        { x: 34, y: 134, r: 26, rot: -30 },
+        { x: 66, y: 96, r: 30, rot: -18 },
+        { x: 104, y: 70, r: 28, rot: -4 },
+        { x: 142, y: 52, r: 24, rot: 12 },
+      ].map((l, i) => (
+        <GoldLeaf key={i} p={l} />
+      ))}
+      <circle cx={186} cy={26} r={3} fill={GOLD} />
+    </Svg>
+  );
+}
+
+/** Pemisah antar bagian: garis emas dengan berlian kecil. */
+export function GoldDivider({ className, style }: { className?: string; style?: CSSProperties }) {
+  return (
+    <Svg viewBox="0 0 200 20" className={className} style={style}>
+      <path d="M10 10H86M114 10H190" stroke={GOLD} strokeWidth={1} />
+      <path d="M100 3L107 10L100 17L93 10Z" fill="none" stroke={GOLD} strokeWidth={1.2} />
+      <circle cx={100} cy={10} r={1.5} fill={GOLD} />
+    </Svg>
+  );
+}

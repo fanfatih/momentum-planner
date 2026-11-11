@@ -8,10 +8,12 @@ import { Icon } from "@/components/icons";
 import { ORG_NAME } from "@/components/promo";
 import { Button, buttonClass, Card, EmptyState, IconButton, Segmented, SelectField, Tag, TextField, toast } from "@/components/ui";
 import { coupleLabel, daysUntil, displayWa, formatDate, formatRp, formatShortDate, waLink } from "@/lib/format";
+import { resolveTheme, THEMES } from "@/lib/invitation-themes";
 import { EDIT_STATUS, LINK_STATE, REQUEST_STATUS, VENDOR_STATUS } from "@/lib/labels";
 import { TRACK_LABEL, VENDOR_CATEGORIES } from "@/lib/seed";
 import {
   addRundown,
+  adminSetInvitationTheme,
   buildChecklist,
   canSeeWedding,
   removeRundown,
@@ -100,6 +102,50 @@ function PlanEditor({ wedding }: { wedding: Wedding }) {
             { value: "premium", label: "Premium" },
           ]}
         />
+      </div>
+    </Card>
+  );
+}
+
+function ThemeAdmin({ wedding }: { wedding: Wedding }) {
+  const invitation = useApp((s) => s.invitations.find((i) => i.weddingId === wedding.id));
+  const [theme, setTheme] = useState(resolveTheme(invitation?.theme).id);
+  if (!invitation) {
+    return <p className="text-[15px] text-ink-soft">Pasangan belum membuat undangan, jadi belum ada tema yang bisa diatur.</p>;
+  }
+  const current = resolveTheme(invitation.theme);
+  return (
+    <Card className="space-y-4 p-4">
+      <p className="max-w-[60ch] text-[15px] text-ink-soft">
+        Tema saat ini: <strong className="text-ink">{current.name}</strong>, {invitation.themeLocked ? "terkunci" : "belum dikunci"}. Pasangan hanya bisa ganti tema sendiri selama belum dikunci.
+      </p>
+      <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+        <SelectField label="Tema" value={theme} onChange={(e) => setTheme(e.target.value as typeof theme)}>
+          {THEMES.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </SelectField>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="secondary"
+            onClick={async () => {
+              if (await adminSetInvitationTheme(wedding.id, theme, true)) toast("Tema diganti dan dikunci.");
+            }}
+          >
+            Ganti dan kunci
+          </Button>
+          <Button
+            variant="secondary"
+            disabled={!invitation.themeLocked}
+            onClick={async () => {
+              if (await adminSetInvitationTheme(wedding.id, invitation.theme, false)) toast("Kunci dibuka, pasangan bisa memilih tema lagi.");
+            }}
+          >
+            Buka kunci
+          </Button>
+        </div>
       </div>
     </Card>
   );
@@ -482,6 +528,12 @@ export default function ProjectDetailPage() {
           {isSuper && (
             <Panel title="Paket proyek" aside={<Tag tone={wedding.plan === "premium" ? "leaf" : "neutral"}>{wedding.plan === "premium" ? "Premium" : "Gratis"}</Tag>}>
               <PlanEditor wedding={wedding} />
+            </Panel>
+          )}
+
+          {isSuper && wedding.plan === "premium" && (
+            <Panel title="Tema undangan">
+              <ThemeAdmin key={wedding.id} wedding={wedding} />
             </Panel>
           )}
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { motion, useReducedMotion } from "framer-motion";
 import { useEffect, useState, type ReactNode } from "react";
 import { Icon } from "@/components/icons";
 import { Button, Segmented, SelectField, TextAreaField, TextField, toast } from "@/components/ui";
@@ -7,6 +8,7 @@ import { daysUntil, mapsLink } from "@/lib/format";
 import { loadWishes, submitRsvp, type WishEntry } from "@/lib/store";
 import type { InvitationEvent } from "@/lib/types";
 import { CalendarGold, PinGold } from "./art";
+import { GalleryPhoto } from "./motion";
 
 const fmt = (iso: string, opts: Intl.DateTimeFormatOptions) => {
   if (!iso) return "";
@@ -17,6 +19,8 @@ const fmt = (iso: string, opts: Intl.DateTimeFormatOptions) => {
 export const eventDate = (iso: string) => fmt(iso, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 export const shortDate = (iso: string) => fmt(iso, { day: "numeric", month: "long", year: "numeric" });
 export const weekdayName = (iso: string) => fmt(iso, { weekday: "long" });
+export const monthNumber = (iso: string) => fmt(iso, { month: "2-digit" });
+export const yearNumber = (iso: string) => fmt(iso, { year: "numeric" });
 export const dayNumber = (iso: string) => fmt(iso, { day: "2-digit" });
 export const monthYear = (iso: string) => fmt(iso, { month: "long", year: "numeric" });
 export const firstName = (s: string) => s.trim().split(/\s+/)[0] || s;
@@ -245,11 +249,48 @@ export function GiftCard({ bank, number, holder }: { bank: string; number: strin
 }
 
 export function Section({ id, label, title, children, orn, className = "" }: { id?: string; label: string; title: string; children: ReactNode; orn?: ReactNode; className?: string }) {
-  return (
-    <section id={id} aria-label={label} className={`inv-sec scroll-mt-4 ${className}`}>
+  const reduce = useReducedMotion();
+  const body = (
+    <>
       <h2 className="inv-h">{title}</h2>
       {orn}
       {children}
-    </section>
+    </>
+  );
+  const cls = `inv-sec scroll-mt-4 ${className}`;
+  if (reduce) {
+    return (
+      <section id={id} aria-label={label} className={cls}>
+        {body}
+      </section>
+    );
+  }
+  return (
+    <motion.section
+      id={id}
+      aria-label={label}
+      className={cls}
+      initial={{ opacity: 0, y: 34 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "0px 0px -8% 0px" }}
+      transition={{ duration: 0.9, ease: [0.2, 0.8, 0.2, 1] }}
+    >
+      {body}
+    </motion.section>
+  );
+}
+
+/** Maksimal enam foto. Jumlah ganjil: foto pertama melebar supaya grid tetap rapi. */
+export function Gallery({ photos }: { photos: string[] }) {
+  if (!photos.length) return null;
+  const wide = photos.length % 2 === 1 && photos.length > 1;
+  return (
+    <ul className="inv-gallery m-0 list-none p-0" data-count={photos.length}>
+      {photos.map((src, i) => (
+        <li key={src.slice(-24) + i} className={wide && i === 0 ? "inv-photo-wide" : undefined}>
+          <GalleryPhoto src={src} alt={`Foto ${i + 1} dari galeri pernikahan`} delay={(i % 2) * 0.12} className="inv-photo" />
+        </li>
+      ))}
+    </ul>
   );
 }

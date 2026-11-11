@@ -708,3 +708,647 @@
   font-style: italic;
   color: var(--gold);
 }
+
+/* =============================== Gerak =============================== */
+
+.inv-ambient {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: min(100%, 430px);
+  transform: translateX(-50%);
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.inv-ambient span {
+  position: absolute;
+  top: 0;
+  display: block;
+  animation-iteration-count: infinite;
+  animation-timing-function: linear;
+}
+
+.inv-ambient-petal span {
+  width: 12px;
+  height: 16px;
+  border-radius: 80% 0 80% 0;
+  background: linear-gradient(135deg, rgba(246, 190, 202, 0.85), rgba(232, 140, 164, 0.7));
+  animation-name: inv-fall;
+}
+
+.inv-ambient-gold span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #f6e2a8, #c9a24f 70%);
+  box-shadow: 0 0 8px 1px rgba(214, 178, 96, 0.6);
+  animation-name: inv-fall;
+}
+
+.inv-ambient-pollen span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 240, 200, 0.95), rgba(214, 190, 120, 0.5) 70%);
+  animation-name: inv-float-up;
+  top: 0;
+}
+
+.inv-ambient-star span {
+  width: 9px;
+  height: 9px;
+  background: #f0d79a;
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  animation-name: inv-twinkle;
+  animation-timing-function: ease-in-out;
+}
+
+@keyframes inv-fall {
+  0% {
+    transform: translate3d(0, -8vh, 0) rotate(0deg) scale(var(--s, 1));
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.9;
+  }
+  90% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate3d(var(--dx, 0), 108vh, 0) rotate(320deg) scale(var(--s, 1));
+    opacity: 0;
+  }
+}
+
+@keyframes inv-float-up {
+  0% {
+    transform: translate3d(0, 108vh, 0) scale(var(--s, 1));
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.8;
+  }
+  85% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate3d(var(--dx, 0), -8vh, 0) scale(var(--s, 1));
+    opacity: 0;
+  }
+}
+
+@keyframes inv-twinkle {
+  0%,
+  100% {
+    opacity: 0.12;
+    transform: scale(calc(var(--s, 1) * 0.5));
+  }
+  50% {
+    opacity: 1;
+    transform: scale(var(--s, 1));
+  }
+}
+
+@keyframes inv-wipe {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes inv-arch {
+  from {
+    clip-path: inset(100% 0 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .wf-wave {
+    animation: inv-wipe 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .mr-arch {
+    animation: inv-arch 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) 0.1s both;
+  }
+}
+
+/* Miniatur sampul di katalog tema. */
+.inv-mini {
+  width: 390px;
+  height: 844px;
+  padding: 0 !important;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+}
+
+.inv-mini *,
+.inv-mini *::before,
+.inv-mini *::after {
+  animation: none !important;
+}
+
+.inv-mini .bl-cover,
+.inv-mini .mr-cover,
+.inv-mini .mr-content,
+.inv-mini .wf-cover,
+.inv-mini .zt-cover,
+.inv-mini .me-cover {
+  min-height: 844px;
+}
+
+.inv-note {
+  color: #2b1f1d;
+}
+
+@keyframes inv-sway {
+  from {
+    transform: rotate(-1.8deg);
+  }
+  to {
+    transform: rotate(2deg);
+  }
+}
+
+.inv-ambient-leaf span {
+  width: 11px;
+  height: 15px;
+  border-radius: 0 85% 0 85%;
+  background: linear-gradient(135deg, rgba(143, 171, 126, 0.9), rgba(95, 125, 82, 0.75));
+  animation-name: inv-fall;
+}
+
+/* =============================== Hijau Zaitun =============================== */
+
+.inv-zaitun {
+  --cream: #eef1e8;
+  --paper: #fbfcf8;
+  --cream-deep: #e3e9da;
+  --line: #cfd9c3;
+  --ink: #2f3d2b;
+  --ink-soft: #586752;
+  --brand: #4f6a45;
+  --brand-deep: #3d5334;
+  --brand-tint: #e0e9d6;
+  --gold: #4f6a45;
+  --font-serif: "Cormorant Garamond", Georgia, serif;
+  background: #eef1e8;
+}
+
+.inv-zaitun .t-caps {
+  font-weight: 500;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--ink-soft);
+}
+
+.inv-zaitun .t-body {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-weight: 500;
+  font-size: 20px;
+  line-height: 1.5;
+}
+
+.zt-cover {
+  position: relative;
+  display: flex;
+  min-height: 100svh;
+  padding: 38px 30px 40px;
+  overflow: hidden;
+}
+
+.zt-window {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 30% 8% 12%;
+  text-align: center;
+  background: #fbfcf8;
+  border: 1px solid #b9c8ac;
+  border-radius: 999px 999px 18px 18px;
+  box-shadow:
+    0 0 0 8px #eef1e8,
+    0 0 0 9px #c2cfb6;
+}
+
+.zt-names {
+  margin: 0;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-style: italic;
+  font-weight: 500;
+  color: var(--brand-deep);
+  line-height: 0.98;
+  letter-spacing: -0.01em;
+}
+
+.zt-names .amp {
+  display: block;
+  font-size: 28px;
+  font-style: normal;
+  font-weight: 500;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+.zt-date {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-weight: 600;
+  font-size: 34px;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.zt-date i {
+  display: block;
+  width: 1px;
+  height: 30px;
+  background: var(--brand);
+  opacity: 0.55;
+}
+
+.zt-hang {
+  position: absolute;
+  top: -6px;
+  z-index: 3;
+  width: 40%;
+  pointer-events: none;
+}
+
+.zt-hang-l {
+  left: -4%;
+}
+
+.zt-hang-r {
+  right: -4%;
+  transform: scaleX(-1);
+}
+
+.zt-foot {
+  position: absolute;
+  bottom: -8px;
+  right: -6%;
+  z-index: 3;
+  width: 34%;
+  pointer-events: none;
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .zt-hang svg,
+  .zt-foot svg {
+    transform-origin: 20% 0;
+    animation: inv-sway 6.5s ease-in-out infinite alternate;
+  }
+  .zt-hang-r svg {
+    animation-duration: 8s;
+  }
+}
+
+.inv-zaitun .inv-sec {
+  padding: 48px 28px 6px;
+}
+
+.inv-zaitun .inv-h {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-style: italic;
+  font-weight: 500;
+  font-size: 38px;
+  line-height: 1.05;
+  color: var(--brand-deep);
+  margin-bottom: 14px;
+}
+
+.inv-zaitun .inv-sub {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-weight: 600;
+  font-size: 22px;
+  color: var(--brand-deep);
+}
+
+.inv-zaitun .inv-name {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-style: italic;
+  font-weight: 500;
+  font-size: 44px;
+  color: var(--brand-deep);
+}
+
+.inv-zaitun .inv-maps {
+  border-radius: 999px;
+}
+
+.inv-zaitun .inv-gift {
+  border-radius: 6px;
+}
+
+.zt-sprig {
+  display: block;
+  width: 170px;
+  margin: 0 auto 14px;
+}
+
+.inv-zaitun .inv-event-col svg {
+  color: var(--brand);
+}
+
+/* =============================== Malam Emas =============================== */
+
+.inv-malam {
+  --cream: #0f1a33;
+  --paper: #17284d;
+  --cream-deep: #1b2f5a;
+  --line: #3a4d7f;
+  --ink: #f1e7cf;
+  --ink-soft: #c9c6bb;
+  --brand: #d4af6a;
+  --brand-deep: #ecd08e;
+  --brand-tint: #2a3a63;
+  --gold: #d4af6a;
+  --font-serif: Cinzel, Georgia, serif;
+  background: linear-gradient(180deg, #172a58 0%, #0f1a33 38%, #0a1226 100%);
+}
+
+.inv-malam::selection,
+.inv-malam ::selection {
+  background: #d4af6a;
+  color: #0f1a33;
+}
+
+.inv-malam .t-script {
+  font-family: "Pinyon Script", cursive;
+  font-weight: 400;
+}
+
+.inv-malam .t-caps {
+  font-family: Cinzel, Georgia, serif;
+  font-weight: 500;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--gold);
+}
+
+.inv-malam .t-body {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-weight: 500;
+  font-size: 20px;
+  line-height: 1.55;
+}
+
+.me-cover {
+  position: relative;
+  min-height: 100svh;
+  overflow: hidden;
+}
+
+.me-arch {
+  position: absolute;
+  inset: 5% 7% 4%;
+  border: 1.5px solid #d4af6a;
+  border-radius: 999px 999px 0 0;
+}
+
+.me-arch::before {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border: 1px solid rgba(212, 175, 106, 0.55);
+  border-radius: 999px 999px 0 0;
+}
+
+.me-crest {
+  position: absolute;
+  z-index: 2;
+  top: 10%;
+  left: 50%;
+  width: 40%;
+  margin-left: -20%;
+}
+
+.me-vine {
+  position: absolute;
+  z-index: 2;
+  bottom: 5.5%;
+  width: 34%;
+  pointer-events: none;
+}
+
+.me-vine-l {
+  left: 9%;
+}
+
+.me-vine-r {
+  right: 9%;
+  transform: scaleX(-1);
+}
+
+.me-content {
+  position: relative;
+  z-index: 3;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 34% 14% 24%;
+  text-align: center;
+}
+
+.me-star {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: #f0d79a;
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  opacity: 0.8;
+}
+
+.inv-malam .inv-sec {
+  padding: 48px 24px 6px;
+}
+
+.inv-malam .inv-h {
+  font-family: Cinzel, Georgia, serif;
+  font-weight: 500;
+  font-size: 20px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 14px;
+}
+
+.inv-malam .inv-sub {
+  font-family: "Pinyon Script", cursive;
+  font-weight: 400;
+  font-size: 34px;
+  color: var(--gold);
+}
+
+.inv-malam .inv-name {
+  font-family: "Pinyon Script", cursive;
+  font-size: 50px;
+  color: var(--gold);
+}
+
+.inv-malam .inv-maps {
+  border-radius: 2px;
+}
+
+.inv-malam .inv-gift {
+  border-color: rgba(212, 175, 106, 0.55);
+  border-radius: 2px;
+}
+
+.me-event {
+  padding: 30px 20px 24px;
+  border: 1px solid #d4af6a;
+  background: var(--paper);
+  box-shadow:
+    inset 0 0 0 5px var(--paper),
+    inset 0 0 0 6px rgba(212, 175, 106, 0.5);
+}
+
+.me-divider {
+  display: block;
+  width: 180px;
+  margin: 0 auto 16px;
+}
+
+.inv-malam .inv-amp {
+  font-family: Cinzel, Georgia, serif;
+  color: var(--gold);
+}
+
+/* Tema gelap: pilihan aktif pada kontrol segmen dibuat emas supaya jelas terbaca. */
+.inv-malam [role="group"] > button[aria-pressed="true"] {
+  background: var(--gold);
+  color: #1a1204;
+  box-shadow: none;
+  --tw-ring-shadow: 0 0 #0000;
+}
+
+/* Galeri foto. Bentuk bingkai mengikuti tema. */
+.inv-gallery {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 12px;
+  align-items: start;
+  text-align: initial;
+}
+.inv-gallery > li:nth-child(even) {
+  margin-top: 22px;
+}
+.inv-gallery > li.inv-photo-wide {
+  grid-column: 1 / -1;
+}
+.inv-gallery[data-count="1"] {
+  grid-template-columns: 1fr;
+}
+.inv-gallery[data-count="1"] > li:nth-child(even) {
+  margin-top: 0;
+}
+.inv-photo {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 3 / 4;
+  background: var(--cream-deep);
+}
+.inv-photo-wide .inv-photo {
+  aspect-ratio: 4 / 3;
+}
+.inv-gallery[data-count="1"] .inv-photo {
+  aspect-ratio: 4 / 5;
+}
+.inv-photo-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.inv-blush .inv-photo {
+  border-radius: 50%;
+  border: 4px solid #fff;
+  box-shadow: 0 6px 18px rgb(124 84 40 / 0.18);
+}
+.inv-blush .inv-photo-wide .inv-photo {
+  border-radius: 46% / 52%;
+}
+.inv-marun .inv-photo {
+  border-radius: 999px 999px 6px 6px;
+  outline: 1.5px solid var(--gold);
+  outline-offset: 4px;
+}
+.inv-wildflower .inv-photo {
+  border-radius: 18px;
+  box-shadow: 0 8px 22px rgb(80 60 30 / 0.16);
+}
+.inv-zaitun .inv-photo {
+  border-radius: 120px 120px 14px 14px;
+  border: 1px solid var(--line);
+}
+.inv-malam .inv-photo {
+  border-radius: 3px;
+  outline: 1px solid var(--gold);
+  outline-offset: 5px;
+}
+
+/* Tombol musik melayang di sudut kanan bawah bingkai ponsel. */
+.inv-music-dock {
+  position: fixed;
+  bottom: 16px;
+  right: max(16px, calc(50% - 215px + 16px));
+  z-index: 40;
+}
+.inv-music {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--brand-deep);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.22);
+  cursor: pointer;
+}
+.inv-music[data-playing] {
+  background: var(--brand);
+  color: var(--paper);
+}
+.inv-music[data-playing] svg {
+  animation: inv-spin 6s linear infinite;
+}
+.inv-music:focus-visible {
+  outline: 3px solid var(--brand);
+  outline-offset: 3px;
+}
+@keyframes inv-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .inv-music[data-playing] svg {
+    animation: none;
+  }
+}

@@ -179,7 +179,7 @@ export function hydrate() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as AppState;
-      if (parsed && parsed.v === 1 && Array.isArray(parsed.weddings)) state = { ...parsed, payments: parsed.payments ?? [], invitations: parsed.invitations ?? [], rsvps: parsed.rsvps ?? [] };
+      if (parsed && parsed.v === 1 && Array.isArray(parsed.weddings)) state = { ...parsed, payments: parsed.payments ?? [], invitations: (parsed.invitations ?? []).map((i: Invitation) => ({ ...i, themeLocked: i.themeLocked ?? false, theme: i.theme === "klasik" ? "blush" : i.theme })), rsvps: parsed.rsvps ?? [] };
       else loadError = "Data tersimpan di perangkat ini tidak dikenali, jadi dimuat ulang dari data contoh.";
     }
   } catch {
@@ -524,6 +524,24 @@ export async function saveInvitation(inv: Invitation): Promise<"ok" | "taken" | 
   }));
   sync((c) => R.upsertRow(c, "invitations", R.toRow.invitation(inv), "wedding_id"));
   return "ok";
+}
+
+/** Super Admin mengganti tema atau membuka kunci tema setelah pasangan membeli tema tambahan. */
+export async function adminSetInvitationTheme(weddingId: string, theme: string, locked: boolean): Promise<boolean> {
+  const client = sb;
+  if (REMOTE && client) {
+    const { error } = await client.rpc("admin_set_invitation_theme", { p_wedding: weddingId, p_theme: theme, p_locked: locked });
+    if (error) {
+      meta = { ...meta, syncError: R.describeError(error) };
+      emit();
+      return false;
+    }
+  }
+  update((s) => ({
+    ...s,
+    invitations: s.invitations.map((i) => (i.weddingId === weddingId ? { ...i, theme, themeLocked: locked } : i)),
+  }));
+  return true;
 }
 
 export function addPayment(p: Omit<BudgetPayment, "id">) {

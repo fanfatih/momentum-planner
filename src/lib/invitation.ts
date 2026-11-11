@@ -15,7 +15,18 @@ export function emptyInvitationContent(): InvitationContent {
     hasResepsi: true,
     resepsi: emptyEvent(),
     gifts: [],
+    photos: [],
+    musicUrl: "",
+    musicTitle: "",
   };
+}
+
+export const MAX_PHOTOS = 6;
+
+/** Isi lama yang belum punya kolom galeri atau musik tetap aman dipakai. */
+export function normalizeContent(c: Partial<InvitationContent> | null | undefined): InvitationContent {
+  const base = { ...emptyInvitationContent(), ...(c ?? {}) };
+  return { ...base, photos: Array.isArray(base.photos) ? base.photos.filter((u) => typeof u === "string" && u).slice(0, MAX_PHOTOS) : [] };
 }
 
 /** Isi awal dari data proyek, supaya pasangan tidak mengetik ulang nama dan tanggal. */

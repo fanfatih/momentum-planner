@@ -265,6 +265,7 @@ export async function loadSnapshot(sb: SupabaseClient, userId: string): Promise<
           weddingId: s(x.wedding_id),
           slug: s(x.slug),
           theme: s(x.theme),
+          themeLocked: x.theme_locked === true,
           published: x.published === true,
           content: { ...emptyInvitationContent(), ...((x.content as Partial<InvitationContent>) ?? {}) },
         }),
@@ -376,6 +377,8 @@ export const toRow = {
     wedding_id: x.weddingId,
     slug: x.slug,
     theme: x.theme,
+    // Hanya dikirim saat terkunci: kolom yang tidak dikirim tidak ikut ditimpa, dan pasangan tidak bisa membuka kunci sendiri.
+    ...(x.themeLocked ? { theme_locked: true } : {}),
     published: x.published,
     content: x.content,
     updated_at: new Date().toISOString(),
