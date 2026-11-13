@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { buttonClass } from "@/components/ui";
 import { resolveTheme, type ThemeId } from "@/lib/invitation-themes";
+import { normalizeContent } from "@/lib/invitation";
 import type { InvitationContent, InvitationEvent } from "@/lib/types";
 import {
   BlushCluster,
@@ -21,11 +22,15 @@ import {
 import {
   Countdown,
   dayNumber,
+  Dresscode,
   EventDateStack,
   EventIcons,
   firstName,
   Gallery,
   GiftCard,
+  KadoCard,
+  LiveStream,
+  LoveStory,
   monthNumber,
   RsvpForm,
   scriptSize,
@@ -266,19 +271,23 @@ function MalamCover({ main, bride, groom, guestName }: CoverProps) {
 }
 
 export function InvitationView({
-  content: c,
+  content: raw,
   slug,
   theme,
   guestName = "",
   preview = false,
+  previewNote = "Pratinjau. Hanya kamu yang melihat tampilan ini, tamu membukanya lewat link undangan.",
 }: {
   content: InvitationContent;
   slug: string;
   theme?: string;
   guestName?: string;
   preview?: boolean;
+  previewNote?: string;
 }) {
   const [wishKey, setWishKey] = useState(0);
+  const c = normalizeContent(raw);
+  const on = c.sections;
   const music = useMusic(c.musicUrl ?? "");
   const photos = c.photos ?? [];
   const t = resolveTheme(theme);
@@ -325,7 +334,7 @@ export function InvitationView({
     <main className={`phone-frame inv inv-${id}`}>
       {preview && (
         <p role="note" className="inv-note relative z-10 m-0 bg-butter px-4 py-2 text-center text-sm font-medium">
-          Pratinjau. Hanya kamu yang melihat tampilan ini, tamu membukanya lewat link undangan.
+          {previewNote}
         </p>
       )}
 
@@ -378,17 +387,35 @@ export function InvitationView({
                 ),
               )}
             </div>
-            <Countdown iso={c.akad.date || c.resepsi.date} />
+            {on.countdown && <Countdown iso={c.akad.date || c.resepsi.date} />}
           </Section>
         )}
 
-        {photos.length > 0 && (
+        {on.dresscode && (c.dresscode.note.trim() || c.dresscode.colors.length > 0) && (
+          <Section id="dresscode" label="Dresscode" title="Dresscode" orn={ornament}>
+            <Dresscode dresscode={c.dresscode} />
+          </Section>
+        )}
+
+        {on.livestream && c.livestream.url.trim() && (
+          <Section id="siaran" label="Siaran langsung" title="Siaran langsung" orn={ornament}>
+            <LiveStream livestream={c.livestream} />
+          </Section>
+        )}
+
+        {on.story && c.story.length > 0 && (
+          <Section id="kisah" label="Kisah cinta" title="Kisah cinta" orn={ornament}>
+            <LoveStory story={c.story} />
+          </Section>
+        )}
+
+        {on.galeri && photos.length > 0 && (
           <Section id="galeri" label="Galeri" title="Galeri" orn={ornament}>
             <Gallery photos={photos} />
           </Section>
         )}
 
-        {gifts.length > 0 && (
+        {on.amplop && gifts.length > 0 && (
           <Section label="Amplop digital" title="Amplop digital" orn={ornament}>
             <p className="t-body inv-lead m-0 mb-5">
               Doa restu Anda sudah menjadi hadiah terbaik. Bila ingin berbagi tanda kasih, bisa melalui rekening berikut.
@@ -401,6 +428,15 @@ export function InvitationView({
           </Section>
         )}
 
+        {on.kado && c.kado.address.trim() && (
+          <Section id="kado" label="Alamat kado" title="Alamat kado" orn={ornament}>
+            <p className="t-body inv-lead m-0 mb-5">Bila ingin mengirim kado, bisa dikirim ke alamat berikut.</p>
+            <KadoCard kado={c.kado} />
+          </Section>
+        )}
+
+        {on.rsvp && (
+        <>
         <Section label="Konfirmasi kehadiran" title="Konfirmasi kehadiran" orn={ornament}>
           {id === "blush" && (
             <Bloom className="bl-sprig" style={{ bottom: "-7%", left: "-20%", width: "52%" }} from={16}>
@@ -413,6 +449,8 @@ export function InvitationView({
         <Section label="Ucapan" title="Ucapan" orn={ornament}>
           <Wishes slug={slug} refreshKey={wishKey} preview={preview} />
         </Section>
+        </>
+        )}
 
         <Section label="Penutup" title={firstName(bride) + " & " + firstName(groom)} orn={ornament}>
           <p className="t-body inv-lead m-0">{c.closing}</p>

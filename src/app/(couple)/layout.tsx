@@ -5,7 +5,7 @@ import { useEffect, type ReactNode } from "react";
 import { BottomNav, DemoRibbon, StorageNotice } from "@/components/shell";
 import { PromoPopup } from "@/components/promo";
 import { LoadingState } from "@/components/ui";
-import { COUPLE_ROLES, useCurrentWedding, useGuard } from "@/lib/guard";
+import { COUPLE_ROLES, modeOf, PLANNER_ONLY, useCurrentWedding, useGuard } from "@/lib/guard";
 
 export default function CoupleLayout({ children }: { children: ReactNode }) {
   const { ready } = useGuard(COUPLE_ROLES);
@@ -13,14 +13,18 @@ export default function CoupleLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const onboarding = pathname === "/mulai";
-  const needsOnboarding = ready && !!wedding && !wedding.track && !onboarding;
+  const mode = wedding ? modeOf(wedding) : null;
+  const needsOnboarding = ready && !!wedding && !onboarding && (!mode || (mode === "planner" && !wedding.track));
+  // Mode undangan tidak punya halaman planner, jadi dialihkan ke undangan.
+  const wrongPlace = ready && mode === "undangan" && PLANNER_ONLY.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 
   useEffect(() => {
     if (ready && !wedding) router.replace("/masuk");
     else if (needsOnboarding) router.replace("/mulai");
-  }, [ready, wedding, needsOnboarding, router]);
+    else if (wrongPlace) router.replace("/undangan");
+  }, [ready, wedding, needsOnboarding, wrongPlace, router]);
 
-  const show = ready && !!wedding && !needsOnboarding;
+  const show = ready && !!wedding && !needsOnboarding && !wrongPlace;
 
   return (
     <div className="phone-frame">
@@ -34,7 +38,7 @@ export default function CoupleLayout({ children }: { children: ReactNode }) {
         </main>
       )}
       {show && !onboarding && wedding && <PromoPopup wedding={wedding} />}
-      {show && !onboarding && <BottomNav />}
+      {show && !onboarding && <BottomNav mode={mode ?? "planner"} />}
     </div>
   );
 }

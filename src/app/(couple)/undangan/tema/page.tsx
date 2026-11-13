@@ -90,7 +90,12 @@ export default function TemaPage() {
       {wedding.plan === "premium" ? (
         <Catalog wedding={wedding} />
       ) : (
-        <p className="m-0 px-5 text-[15px] text-ink-soft">Katalog tema terbuka untuk paket premium. Buka menu Undangan untuk tanya paketnya.</p>
+        <div className="px-5">
+          <p className="m-0 text-[15px] text-ink-soft">Memilih tema terbuka setelah paket aktif. Lihat contoh semua tema di katalog dulu.</p>
+          <Link href="/katalog" className={`${buttonClass("primary")} mt-4`}>
+            Lihat katalog dan harga
+          </Link>
+        </div>
       )}
     </>
   );

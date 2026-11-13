@@ -76,16 +76,22 @@ const TABS: { href: string; label: string; icon: IconName }[] = [
   { href: "/tamu", label: "Tamu", icon: "people" },
 ];
 
-export function BottomNav() {
+const TABS_UNDANGAN: { href: string; label: string; icon: IconName }[] = [
+  { href: "/undangan", label: "Undangan", icon: "rings" },
+  { href: "/tamu", label: "Tamu", icon: "people" },
+];
+
+export function BottomNav({ mode = "planner" }: { mode?: "planner" | "undangan" }) {
   const pathname = usePathname();
+  const tabs = mode === "undangan" ? TABS_UNDANGAN : TABS;
   return (
     <nav
       aria-label="Menu utama"
       className="fixed bottom-0 left-1/2 z-40 w-full max-w-[430px] -translate-x-1/2 border-t border-line bg-paper pb-[env(safe-area-inset-bottom)]"
     >
-      <ul className="grid grid-cols-5">
-        {TABS.map((t) => {
-          const active = pathname === t.href;
+      <ul className={mode === "undangan" ? "grid grid-cols-2" : "grid grid-cols-5"}>
+        {tabs.map((t) => {
+          const active = pathname === t.href || pathname.startsWith(`${t.href}/`);
           return (
             <li key={t.href}>
               <Link

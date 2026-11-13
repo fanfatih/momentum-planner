@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import { useApp, useMeta } from "./store";
-import type { Role, Wedding } from "./types";
+import type { AppMode, Role, Wedding } from "./types";
 
 export const COUPLE_ROLES: Role[] = ["bride", "groom"];
 export const ADMIN_ROLES: Role[] = ["admin_mahesa", "admin_momentum", "super_admin"];
@@ -27,6 +27,14 @@ export function useGuard(allowed: Role[]) {
 
   return { ready: hydrated && ok, session };
 }
+
+/** Akun lama yang sudah punya jalur dianggap memakai planner, jadi tidak ditanya ulang. */
+export function modeOf(w: Wedding): AppMode | null {
+  return w.mode ?? (w.track ? "planner" : null);
+}
+
+/** Halaman yang hanya ada di mode planner. */
+export const PLANNER_ONLY = ["/beranda", "/ceklis", "/vendor", "/budget"];
 
 export function useCurrentWedding(): Wedding | null {
   const session = useApp((s) => s.session);

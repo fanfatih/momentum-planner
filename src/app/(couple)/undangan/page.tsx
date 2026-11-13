@@ -7,15 +7,16 @@ import { ORG_NAME, useOrgWa } from "@/components/promo";
 import { PageHeader } from "@/components/shell";
 import { Button, buttonClass, Card, cx, Notice, Reveal, Sheet, Tag, TextAreaField, TextField, toast } from "@/components/ui";
 import { coupleLabel, isDummyWa, waLink } from "@/lib/format";
-import { useCurrentWedding } from "@/lib/guard";
-import { contentFromWedding, normalizeContent, SLUG_PATTERN, suggestSlug } from "@/lib/invitation";
+import { ProfileSheet } from "@/components/couple/ProfileSheet";
+import { modeOf, useCurrentWedding } from "@/lib/guard";
+import { contentFromWedding, HEX, MAX_COLORS, MAX_STORY, normalizeContent, SECTION_INFO, SLUG_PATTERN, suggestSlug } from "@/lib/invitation";
 import { MusicFields, PhotoFields } from "@/components/invitation/media-fields";
 import { removeMedia } from "@/lib/media";
 import { resolveTheme } from "@/lib/invitation-themes";
 import { ThemeMini } from "@/components/invitation/ThemeMini";
 import { useThemeState } from "@/components/invitation/theme-choice";
 import { removeRsvp, saveInvitation, useApp } from "@/lib/store";
-import type { Invitation, InvitationContent, InvitationEvent, Wedding } from "@/lib/types";
+import type { Invitation, InvitationContent, InvitationEvent, SectionKey, Wedding } from "@/lib/types";
 import { IconButton } from "@/components/ui";
 
 const FEATURES = [
@@ -75,9 +76,14 @@ function Locked({ wedding }: { wedding: Wedding }) {
             </li>
           ))}
         </ul>
-        <Button className="mt-5" onClick={() => setOpen(true)}>
-          Tanya paket premium
-        </Button>
+        <div className="mt-5 flex flex-wrap gap-2">
+          <Link href="/katalog" className={buttonClass("primary")}>
+            Lihat katalog dan harga
+          </Link>
+          <Button variant="secondary" onClick={() => setOpen(true)}>
+            Tanya paket premium
+          </Button>
+        </div>
       </Card>
       <InquirySheet open={open} onClose={() => setOpen(false)} wedding={wedding} />
     </Reveal>
@@ -110,6 +116,38 @@ function EventFields({
         onChange={(e) => set({ mapsQuery: e.target.value })}
       />
     </div>
+  );
+}
+
+/** Satu seksi undangan dengan saklar. Kalau mati, isiannya terlipat dan seksinya tidak tampil di undangan. */
+function SectionBlock({
+  sectionKey,
+  title,
+  on,
+  onToggle,
+  children,
+}: {
+  sectionKey: SectionKey;
+  title: string;
+  on: boolean;
+  onToggle: (v: boolean) => void;
+  children?: React.ReactNode;
+}) {
+  const hint = SECTION_INFO.find((s) => s.key === sectionKey)?.hint;
+  return (
+    <section aria-label={title} data-section={sectionKey} className="space-y-3">
+      <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3">
+        <span className="min-w-0">
+          <span className="block text-[19px] font-semibold text-ink [font-family:var(--font-serif)]">{title}</span>
+          {!on && hint && <span className="block text-[14px] text-ink-soft">{hint}</span>}
+        </span>
+        <span className="flex shrink-0 items-center gap-2 text-[14px] text-ink-soft">
+          {on ? "Tampil" : "Mati"}
+          <input type="checkbox" role="switch" aria-label={`Tampilkan ${title}`} className="size-6 accent-[var(--brand)]" checked={on} onChange={(e) => onToggle(e.target.checked)} />
+        </span>
+      </label>
+      {on && children}
+    </section>
   );
 }
 
@@ -209,6 +247,11 @@ function Editor({ wedding, existing }: { wedding: Wedding; existing: Invitation 
   const [published, setPublished] = useState(existing?.published ?? false);
   const set = (patch: Partial<InvitationContent>) => setC((prev) => ({ ...prev, ...patch }));
 
+  const toggle = (key: SectionKey) => (v: boolean) => set({ sections: { ...c.sections, [key]: v } });
+  const setStory = (i: number, patch: Partial<InvitationContent["story"][number]>) =>
+    set({ story: c.story.map((s, j) => (j === i ? { ...s, ...patch } : s)) });
+  const setColor = (i: number, hex: string) => set({ dresscode: { ...c.dresscode, colors: c.dresscode.colors.map((x, j) => (j === i ? hex : x)) } });
+
   const setGift = (i: number, patch: Partial<InvitationContent["gifts"][number]>) =>
     set({ gifts: c.gifts.map((g, j) => (j === i ? { ...g, ...patch } : g)) });
 
@@ -219,6 +262,10 @@ function Editor({ wedding, existing }: { wedding: Wedding; existing: Invitation 
       setSlugError("Pakai 3 sampai 40 huruf kecil, angka, atau tanda hubung. Contoh: aulia-raka.");
       return;
     }
+    if (c.sections.livestream && c.livestream.url.trim() && !/^https?:\/\//i.test(c.livestream.url.trim())) {
+      toast("Link siaran harus diawali https://");
+      return;
+    }
     setBusy(true);
     const result = await saveInvitation({
       weddingId: wedding.id,
@@ -226,7 +273,7 @@ function Editor({ wedding, existing }: { wedding: Wedding; existing: Invitation 
       theme: resolveTheme(existing?.theme).id,
       themeLocked: existing?.themeLocked ?? false,
       published,
-      content: { ...c, gifts: c.gifts.filter((g) => g.number.trim()) },
+      content: { ...c, gifts: c.gifts.filter((g) => g.number.trim()), story: c.story.filter((s) => s.text.trim()) },
     });
     setBusy(false);
     if (result === "taken") {
@@ -325,18 +372,70 @@ function Editor({ wedding, existing }: { wedding: Wedding; existing: Invitation 
         {c.hasResepsi && <EventFields title="Resepsi" value={c.resepsi} onChange={(resepsi) => set({ resepsi })} />}
       </section>
 
-      <section aria-label="Galeri foto" className="space-y-3">
-        <h2 className="text-[19px]">Galeri foto (opsional)</h2>
+      <SectionBlock sectionKey="countdown" title="Hitung mundur" on={c.sections.countdown} onToggle={toggle("countdown")} />
+
+      <SectionBlock sectionKey="dresscode" title="Dresscode" on={c.sections.dresscode} onToggle={toggle("dresscode")}>
+        <TextAreaField
+          label="Pesan dresscode"
+          placeholder="Kami menganjurkan tamu mengenakan warna berikut."
+          value={c.dresscode.note}
+          onChange={(e) => set({ dresscode: { ...c.dresscode, note: e.target.value } })}
+        />
+        <div className="space-y-2">
+          {c.dresscode.colors.map((hex, i) => (
+            <div key={i} className="flex items-center gap-3">
+              <input type="color" aria-label={`Warna ${i + 1}`} className="size-11 shrink-0 cursor-pointer rounded-[10px] border border-line bg-paper p-1" value={HEX.test(hex) ? hex : "#cccccc"} onChange={(e) => setColor(i, e.target.value)} />
+              <span className="flex-1 tabular-nums text-[15px] text-ink-soft">{hex}</span>
+              <IconButton icon="trash" label={`Hapus warna ${i + 1}`} onClick={() => set({ dresscode: { ...c.dresscode, colors: c.dresscode.colors.filter((_, j) => j !== i) } })} />
+            </div>
+          ))}
+          {c.dresscode.colors.length < MAX_COLORS && (
+            <Button variant="secondary" block icon="plus" onClick={() => set({ dresscode: { ...c.dresscode, colors: [...c.dresscode.colors, "#b93636"] } })}>
+              Tambah warna
+            </Button>
+          )}
+        </div>
+      </SectionBlock>
+
+      <SectionBlock sectionKey="livestream" title="Siaran langsung" on={c.sections.livestream} onToggle={toggle("livestream")}>
+        <TextField
+          label="Link siaran"
+          hint="YouTube, Instagram, atau Zoom. Seksi baru tampil kalau link terisi."
+          inputMode="url"
+          placeholder="https://"
+          value={c.livestream.url}
+          onChange={(e) => set({ livestream: { ...c.livestream, url: e.target.value } })}
+        />
+        <TextAreaField label="Keterangan (opsional)" value={c.livestream.note} onChange={(e) => set({ livestream: { ...c.livestream, note: e.target.value } })} />
+      </SectionBlock>
+
+      <SectionBlock sectionKey="story" title="Kisah cinta" on={c.sections.story} onToggle={toggle("story")}>
+        {c.story.map((s, i) => (
+          <div key={i} className="space-y-3 rounded-[12px] border border-line bg-paper p-3">
+            <TextField label={`Waktu ${i + 1}`} placeholder="Agustus 2023" value={s.when} onChange={(e) => setStory(i, { when: e.target.value })} />
+            <TextAreaField label={`Cerita ${i + 1}`} value={s.text} maxLength={400} onChange={(e) => setStory(i, { text: e.target.value })} />
+            <Button variant="ghost" icon="trash" onClick={() => set({ story: c.story.filter((_, j) => j !== i) })}>
+              Hapus cerita {i + 1}
+            </Button>
+          </div>
+        ))}
+        {c.story.length < MAX_STORY && (
+          <Button variant="secondary" block icon="plus" onClick={() => set({ story: [...c.story, { when: "", text: "" }] })}>
+            Tambah cerita
+          </Button>
+        )}
+      </SectionBlock>
+
+      <SectionBlock sectionKey="galeri" title="Galeri foto" on={c.sections.galeri} onToggle={toggle("galeri")}>
         <PhotoFields weddingId={wedding.id} photos={c.photos} onChange={(photos) => set({ photos })} />
-      </section>
+      </SectionBlock>
 
       <section aria-label="Musik latar" className="space-y-3">
         <h2 className="text-[19px]">Musik latar (opsional)</h2>
         <MusicFields weddingId={wedding.id} url={c.musicUrl} title={c.musicTitle} onChange={(m) => set(m)} />
       </section>
 
-      <section aria-label="Amplop digital" className="space-y-3">
-        <h2 className="text-[19px]">Amplop digital (opsional)</h2>
+      <SectionBlock sectionKey="amplop" title="Amplop digital" on={c.sections.amplop} onToggle={toggle("amplop")}>
         {c.gifts.map((g, i) => (
           <div key={i} className="space-y-3 rounded-[12px] border border-line bg-paper p-3">
             <TextField label="Bank atau e-wallet" placeholder="BCA" value={g.bank} onChange={(e) => setGift(i, { bank: e.target.value })} />
@@ -352,7 +451,15 @@ function Editor({ wedding, existing }: { wedding: Wedding; existing: Invitation 
             Tambah rekening
           </Button>
         )}
-      </section>
+      </SectionBlock>
+
+      <SectionBlock sectionKey="kado" title="Alamat kado" on={c.sections.kado} onToggle={toggle("kado")}>
+        <TextField label="Nama penerima" value={c.kado.name} onChange={(e) => set({ kado: { ...c.kado, name: e.target.value } })} />
+        <TextField label="Nomor telepon penerima (opsional)" inputMode="tel" value={c.kado.phone} onChange={(e) => set({ kado: { ...c.kado, phone: e.target.value } })} />
+        <TextAreaField label="Alamat lengkap" hint="Seksi tampil kalau alamat terisi." value={c.kado.address} onChange={(e) => set({ kado: { ...c.kado, address: e.target.value } })} />
+      </SectionBlock>
+
+      <SectionBlock sectionKey="rsvp" title="Konfirmasi dan ucapan" on={c.sections.rsvp} onToggle={toggle("rsvp")} />
 
       <section aria-label="Penutup" className="space-y-3">
         <TextAreaField label="Kalimat penutup" value={c.closing} onChange={(e) => set({ closing: e.target.value })} />
@@ -368,8 +475,10 @@ function Editor({ wedding, existing }: { wedding: Wedding; existing: Invitation 
 export default function UndanganPage() {
   const wedding = useCurrentWedding();
   const invitations = useApp((s) => s.invitations);
+  const [profileOpen, setProfileOpen] = useState(false);
   if (!wedding) return null;
   const existing = invitations.find((i) => i.weddingId === wedding.id) ?? null;
+  const undanganOnly = modeOf(wedding) === "undangan";
 
   return (
     <>
@@ -377,11 +486,18 @@ export default function UndanganPage() {
         title="Undangan digital"
         lead={wedding.plan === "premium" ? "Isi undanganmu" : undefined}
         action={
-          <Link href="/beranda" className={buttonClass("ghost")}>
-            Beranda
-          </Link>
+          undanganOnly ? (
+            <Button variant="ghost" onClick={() => setProfileOpen(true)}>
+              Profil
+            </Button>
+          ) : (
+            <Link href="/beranda" className={buttonClass("ghost")}>
+              Beranda
+            </Link>
+          )
         }
       />
+      <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} wedding={wedding} />
       {wedding.plan === "premium" ? (
         <>
           <Editor key={wedding.id} wedding={wedding} existing={existing} />

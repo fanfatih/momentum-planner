@@ -6,6 +6,7 @@ import { InstallButton } from "@/components/install";
 import { Button, SelectField, Sheet, TextField, toast } from "@/components/ui";
 import { ROLE_LABEL } from "@/lib/labels";
 import { TRACK_LABEL } from "@/lib/seed";
+import { modeOf } from "@/lib/guard";
 import { logout, updateWedding, useApp } from "@/lib/store";
 import type { Track, Wedding } from "@/lib/types";
 
@@ -19,6 +20,7 @@ function ProfileForm({ wedding, onClose }: { wedding: Wedding; onClose: () => vo
   const [wa, setWa] = useState(wedding.contactWa);
   const [track, setTrack] = useState<Track>(wedding.track ?? "muslim");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const undanganOnly = modeOf(wedding) === "undangan";
 
   const save = (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,7 +35,7 @@ function ProfileForm({ wedding, onClose }: { wedding: Wedding; onClose: () => vo
       akadDate: date || null,
       city: city.trim(),
       contactWa: wa.trim(),
-      track,
+      ...(undanganOnly ? {} : { track }),
     });
     toast("Profil proyek disimpan.");
     onClose();
@@ -47,6 +49,23 @@ function ProfileForm({ wedding, onClose }: { wedding: Wedding; onClose: () => vo
       <TextField label="Tanggal akad" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
       <TextField label="Kota acara" value={city} onChange={(e) => setCity(e.target.value)} />
       <TextField label="Nomor WhatsApp" inputMode="tel" placeholder="08xxxxxxxxxx" value={wa} onChange={(e) => setWa(e.target.value)} />
+      {undanganOnly ? (
+        <div className="rounded-[10px] border border-line bg-paper p-3">
+          <p className="m-0 font-semibold text-ink">Kamu memakai undangan digital saja</p>
+          <p className="m-0 mt-1 text-[14px] text-ink-soft">Ingin ceklis dokumen, budget, dan vendor juga? Aktifkan planner, data undanganmu tetap aman.</p>
+          <Button
+            variant="secondary"
+            className="mt-3"
+            onClick={() => {
+              updateWedding(wedding.id, { mode: "planner" });
+              onClose();
+              router.push("/mulai");
+            }}
+          >
+            Aktifkan planner
+          </Button>
+        </div>
+      ) : (
       <SelectField
         label="Jalur pencatatan"
         hint="Mengganti jalur mengubah isi ceklis administrasi."
@@ -56,6 +75,7 @@ function ProfileForm({ wedding, onClose }: { wedding: Wedding; onClose: () => vo
         <option value="muslim">{TRACK_LABEL.muslim}</option>
         <option value="nonmuslim">{TRACK_LABEL.nonmuslim}</option>
       </SelectField>
+      )}
 
       <div className="flex items-center justify-between gap-3 rounded-[10px] border border-line bg-paper px-3 py-2">
         <div>

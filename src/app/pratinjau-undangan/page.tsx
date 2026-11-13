@@ -51,7 +51,7 @@ function Body({
   const slug = existing?.slug ?? "contoh";
   return (
     <>
-      <div className="phone-frame sticky top-0 z-20 flex flex-wrap items-center gap-2 border-b border-line bg-cream px-4 py-3">
+      <div className="sticky top-0 z-20 mx-auto flex w-full max-w-[430px] flex-wrap items-center gap-2 border-b border-line bg-cream px-4 py-3">
         <Link href={picked ? "/undangan/tema" : "/undangan"} className={buttonClass("secondary")}>
           {picked ? "Daftar tema" : "Kembali ke editor"}
         </Link>

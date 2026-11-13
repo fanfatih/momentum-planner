@@ -11,6 +11,8 @@ export type ChecklistKind = "administrasi" | "acara";
 export type PromoTrigger = "beranda" | "ceklis-wo" | "ceklis-dokumentasi";
 export type RequestStatus = "menunggu" | "disetujui" | "ditolak";
 export type Plan = "gratis" | "premium";
+/** Pakai planner lengkap, atau hanya undangan digital. Kosong berarti belum memilih. */
+export type AppMode = "planner" | "undangan";
 
 export interface Session {
   role: Role;
@@ -28,6 +30,7 @@ export interface Wedding {
   id: string;
   code: string;
   track: Track | null;
+  mode?: AppMode | null;
   brideName: string;
   groomName: string;
   akadDate: string | null;
@@ -140,6 +143,19 @@ export interface InvitationContent {
   /** Alamat file musik latar. Kosong berarti tanpa musik. */
   musicUrl: string;
   musicTitle: string;
+  /** Seksi yang tampil di undangan. Seksi yang dimatikan tidak muncul walau isinya ada. */
+  sections: Record<SectionKey, boolean>;
+  dresscode: { note: string; colors: string[] };
+  livestream: { url: string; note: string };
+  story: StoryItem[];
+  kado: { name: string; phone: string; address: string };
+}
+
+export type SectionKey = "countdown" | "dresscode" | "livestream" | "story" | "galeri" | "amplop" | "kado" | "rsvp";
+
+export interface StoryItem {
+  when: string;
+  text: string;
 }
 
 export interface Invitation {

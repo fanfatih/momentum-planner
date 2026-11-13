@@ -6,7 +6,7 @@ import { Icon } from "@/components/icons";
 import { Button, Segmented, SelectField, TextAreaField, TextField, toast } from "@/components/ui";
 import { daysUntil, mapsLink } from "@/lib/format";
 import { loadWishes, submitRsvp, type WishEntry } from "@/lib/store";
-import type { InvitationEvent } from "@/lib/types";
+import type { InvitationContent, InvitationEvent } from "@/lib/types";
 import { CalendarGold, PinGold } from "./art";
 import { GalleryPhoto } from "./motion";
 
@@ -293,5 +293,76 @@ export function Gallery({ photos }: { photos: string[] }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+/** Warna yang dianjurkan untuk tamu. Nama warna dibacakan lewat teks, bukan hanya ditampilkan sebagai warna. */
+export function Dresscode({ dresscode }: { dresscode: InvitationContent["dresscode"] }) {
+  return (
+    <div className="text-center">
+      {dresscode.note.trim() && <p className="t-body inv-lead m-0 whitespace-pre-line">{dresscode.note}</p>}
+      {dresscode.colors.length > 0 && (
+        <ul className="inv-swatches m-0 mt-5 flex list-none flex-wrap justify-center gap-4 p-0">
+          {dresscode.colors.map((hex) => (
+            <li key={hex} className="grid justify-items-center gap-1.5">
+              <span className="inv-swatch" style={{ background: hex }} role="img" aria-label={`Warna ${hex}`} />
+              <span className="text-[12px] uppercase tabular-nums text-ink-soft">{hex}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+export function LiveStream({ livestream }: { livestream: InvitationContent["livestream"] }) {
+  const url = /^https?:\/\//i.test(livestream.url.trim()) ? livestream.url.trim() : "";
+  return (
+    <div className="text-center">
+      <p className="t-body inv-lead m-0 whitespace-pre-line">
+        {livestream.note.trim() || "Bagi yang berhalangan hadir, acara kami akan disiarkan langsung lewat link berikut."}
+      </p>
+      {url && (
+        <a href={url} target="_blank" rel="noopener noreferrer" className="inv-live mt-5 inline-flex min-h-11 items-center gap-2 px-5 font-semibold">
+          <Icon name="video" size={18} />
+          Tonton siaran langsung
+          <span className="sr-only"> (buka di tab baru)</span>
+        </a>
+      )}
+    </div>
+  );
+}
+
+export function LoveStory({ story }: { story: InvitationContent["story"] }) {
+  return (
+    <ol className="inv-story m-0 list-none p-0">
+      {story.map((s, i) => (
+        <li key={i} className="inv-story-item">
+          {s.when.trim() && <p className="inv-story-when m-0">{s.when}</p>}
+          <p className="t-body m-0 whitespace-pre-line">{s.text}</p>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+export function KadoCard({ kado }: { kado: InvitationContent["kado"] }) {
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText([kado.name, kado.phone, kado.address].filter(Boolean).join("\n"));
+      toast("Alamat kado disalin.");
+    } catch {
+      toast("Alamat tidak bisa disalin otomatis, salin manual ya.");
+    }
+  };
+  return (
+    <div className="inv-gift">
+      {kado.name.trim() && <p className="m-0 text-[17px] font-semibold text-ink">{kado.name}</p>}
+      {kado.phone.trim() && <p className="m-0 text-[15px] text-ink-soft">{kado.phone}</p>}
+      <p className="m-0 mt-2 whitespace-pre-line text-[15px] text-ink">{kado.address}</p>
+      <Button variant="secondary" icon="copy" className="mt-3" onClick={copy}>
+        Salin alamat
+      </Button>
+    </div>
   );
 }

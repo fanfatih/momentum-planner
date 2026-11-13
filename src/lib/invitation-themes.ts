@@ -10,6 +10,8 @@ export interface ThemeInfo {
   bg: string;
   ink: string;
   accent: string;
+  /** Standar atau eksklusif. Menentukan harga paketnya. */
+  tier: "standar" | "eksklusif";
 }
 
 export const THEMES: ThemeInfo[] = [
@@ -21,6 +23,7 @@ export const THEMES: ThemeInfo[] = [
     bg: "#f1e4e1",
     ink: "#7c5428",
     accent: "#d9486a",
+    tier: "standar",
   },
   {
     id: "marun",
@@ -30,6 +33,7 @@ export const THEMES: ThemeInfo[] = [
     bg: "#fbf5e9",
     ink: "#6b1727",
     accent: "#b88a44",
+    tier: "standar",
   },
   {
     id: "wildflower",
@@ -39,6 +43,7 @@ export const THEMES: ThemeInfo[] = [
     bg: "#edebe8",
     ink: "#7a5a24",
     accent: "#c9809a",
+    tier: "standar",
   },
   {
     id: "zaitun",
@@ -48,6 +53,7 @@ export const THEMES: ThemeInfo[] = [
     bg: "#eef1e8",
     ink: "#34452f",
     accent: "#6f8a62",
+    tier: "standar",
   },
   {
     id: "malam",
@@ -57,6 +63,7 @@ export const THEMES: ThemeInfo[] = [
     bg: "#0f1a33",
     ink: "#ecdca9",
     accent: "#d4af6a",
+    tier: "standar",
   },
 ];
 

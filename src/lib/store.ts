@@ -253,6 +253,7 @@ export async function startNewCouple(side: CoupleSide): Promise<string | null> {
     id,
     code: makeCode(),
     track: null,
+    mode: null,
     brideName: "",
     groomName: "",
     akadDate: null,

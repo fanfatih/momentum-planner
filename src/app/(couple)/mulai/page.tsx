@@ -1,25 +1,40 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Monogram } from "@/components/Logo";
 import { Button, buttonClass, cx, ProgressBar, TextField, toast } from "@/components/ui";
 import { waLink } from "@/lib/format";
-import { useCurrentWedding } from "@/lib/guard";
+import { modeOf, useCurrentWedding } from "@/lib/guard";
 import { TRACK_LABEL } from "@/lib/seed";
 import { updateWedding } from "@/lib/store";
-import type { Track } from "@/lib/types";
+import type { AppMode, Track } from "@/lib/types";
 
 const TRACKS: { value: Track; body: string }[] = [
   { value: "muslim", body: "Ceklis dokumen dan pendaftaran nikah di KUA." },
   { value: "nonmuslim", body: "Ceklis pencatatan perkawinan di Disdukcapil." },
 ];
 
-const STEP_TITLE = ["Siapa yang menikah?", "Pilih jalur pencatatan", "Kapan dan di mana?"];
+const MODES: { value: AppMode; title: string; body: string }[] = [
+  { value: "planner", title: "Planner lengkap", body: "Ceklis dokumen, budget, vendor, daftar tamu, dan undangan digital." },
+  { value: "undangan", title: "Undangan digital saja", body: "Pilih tema, isi undangan, kirim ke tamu lewat WhatsApp, dan kumpulkan RSVP." },
+];
+
+type StepKey = "mode" | "names" | "track" | "when";
+const STEP_TITLE: Record<StepKey, string> = {
+  mode: "Mau pakai yang mana?",
+  names: "Siapa yang menikah?",
+  track: "Pilih jalur pencatatan",
+  when: "Kapan dan di mana?",
+};
 
 export default function MulaiPage() {
   const wedding = useCurrentWedding();
   const [step, setStep] = useState(0);
+  const [done, setDone] = useState(false);
+  const [needMode] = useState(() => !!wedding && !modeOf(wedding));
+  const [needNames] = useState(() => !!wedding && !(wedding.brideName && wedding.groomName));
+  const [mode, setMode] = useState<AppMode | null>(wedding ? modeOf(wedding) : null);
   const [bride, setBride] = useState(wedding?.brideName ?? "");
   const [groom, setGroom] = useState(wedding?.groomName ?? "");
   const [wa, setWa] = useState(wedding?.contactWa ?? "");
@@ -28,35 +43,51 @@ export default function MulaiPage() {
   const [city, setCity] = useState(wedding?.city ?? "");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const steps = useMemo<StepKey[]>(() => {
+    const out: StepKey[] = [];
+    if (needMode) out.push("mode");
+    if (needNames) out.push("names");
+    if (mode === "planner" && !wedding?.track) out.push("track");
+    if (needNames) out.push("when");
+    return out;
+  }, [needMode, needNames, mode, wedding?.track]);
+
   if (!wedding) return null;
+  const key = steps[step];
+
+  const finish = () => {
+    updateWedding(wedding.id, {
+      mode,
+      ...(needNames
+        ? { brideName: bride.trim(), groomName: groom.trim(), contactWa: wa.trim(), akadDate: date || null, city: city.trim() }
+        : {}),
+      ...(mode === "planner" ? { track } : {}),
+    });
+    setDone(true);
+  };
 
   const next = () => {
-    if (step === 0) {
+    if (key === "mode" && !mode) {
+      setErrors({ mode: "Pilih salah satu dulu." });
+      return;
+    }
+    if (key === "names") {
       const e: Record<string, string> = {};
       if (!bride.trim()) e.bride = "Isi nama pengantin wanita.";
       if (!groom.trim()) e.groom = "Isi nama pengantin pria.";
       setErrors(e);
       if (Object.keys(e).length) return;
     }
-    if (step === 1 && !track) {
+    if (key === "track" && !track) {
       setErrors({ track: "Pilih salah satu jalur dulu." });
       return;
     }
-    if (step === 2) {
-      updateWedding(wedding.id, {
-        brideName: bride.trim(),
-        groomName: groom.trim(),
-        contactWa: wa.trim(),
-        track,
-        akadDate: date || null,
-        city: city.trim(),
-      });
-    }
     setErrors({});
-    setStep(step + 1);
+    if (step === steps.length - 1) finish();
+    else setStep(step + 1);
   };
 
-  if (step === 3) {
+  if (done) {
     const origin = typeof window === "undefined" ? "" : window.location.origin;
     const invite = `Yuk gabung di Momentum Planner. Buka ${origin}, pilih "Gabung ke proyek pasangan", lalu masukkan kode ${wedding.code}.`;
     return (
@@ -89,8 +120,8 @@ export default function MulaiPage() {
           >
             Salin kode
           </Button>
-          <Link href="/beranda" className={buttonClass("ghost", true)}>
-            Lanjut ke beranda
+          <Link href={mode === "undangan" ? "/undangan" : "/beranda"} className={buttonClass("ghost", true)}>
+            {mode === "undangan" ? "Lanjut ke undangan" : "Lanjut ke beranda"}
           </Link>
         </div>
       </div>
@@ -99,11 +130,13 @@ export default function MulaiPage() {
 
   return (
     <div className="px-5 pt-8">
-      <p className="text-sm font-semibold text-ink-soft">Langkah {step + 1} dari 3</p>
+      <p className="text-sm font-semibold text-ink-soft">
+        Langkah {step + 1} dari {steps.length}
+      </p>
       <div className="mt-2">
-        <ProgressBar value={((step + 1) / 3) * 100} label="Kemajuan pengisian" />
+        <ProgressBar value={((step + 1) / steps.length) * 100} label="Kemajuan pengisian" />
       </div>
-      <h1 className="mt-6 text-[28px]">{STEP_TITLE[step]}</h1>
+      <h1 className="mt-6 text-[28px]">{STEP_TITLE[key]}</h1>
 
       <form
         className="mt-5 space-y-4"
@@ -113,7 +146,35 @@ export default function MulaiPage() {
           next();
         }}
       >
-        {step === 0 && (
+        {key === "mode" && (
+          <fieldset>
+            <legend className="text-[15px] text-ink-soft">Bisa diganti nanti. Data yang sudah kamu isi tidak hilang.</legend>
+            <div className="mt-4 space-y-3">
+              {MODES.map((m) => (
+                <label
+                  key={m.value}
+                  className={cx(
+                    "flex min-h-16 items-start gap-3 rounded-[14px] border p-4 transition-colors duration-150",
+                    mode === m.value ? "border-brand bg-brand-tint" : "border-ink/55 bg-paper hover:bg-cream-deep",
+                  )}
+                >
+                  <input type="radio" name="mode" className="mt-1 size-5 accent-[var(--brand)]" checked={mode === m.value} onChange={() => setMode(m.value)} />
+                  <span>
+                    <span className="block font-semibold text-ink">{m.title}</span>
+                    <span className="block text-sm text-ink-soft">{m.body}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            {errors.mode && (
+              <p role="alert" className="mt-3 text-[13px] font-semibold text-brand-deep">
+                {errors.mode}
+              </p>
+            )}
+          </fieldset>
+        )}
+
+        {key === "names" && (
           <>
             <TextField
               label="Nama pengantin wanita"
@@ -140,7 +201,7 @@ export default function MulaiPage() {
           </>
         )}
 
-        {step === 1 && (
+        {key === "track" && (
           <fieldset>
             <legend className="text-[15px] text-ink-soft">
               Jalur menentukan isi ceklis dokumen. Bisa diganti nanti dari profil.
@@ -176,7 +237,7 @@ export default function MulaiPage() {
           </fieldset>
         )}
 
-        {step === 2 && (
+        {key === "when" && (
           <>
             <TextField
               label="Tanggal akad (opsional)"
@@ -201,7 +262,7 @@ export default function MulaiPage() {
             </Button>
           )}
           <Button type="submit" className="flex-1">
-            {step === 2 ? "Simpan dan buat proyek" : "Lanjut"}
+            {step === steps.length - 1 ? "Simpan dan buat proyek" : "Lanjut"}
           </Button>
         </div>
       </form>

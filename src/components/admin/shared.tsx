@@ -10,6 +10,7 @@ export const ADMIN_NAV: { href: string; label: string; icon: IconName; roles: Ro
   { href: "/admin", label: "Proyek", icon: "folder", roles: ["admin_mahesa", "admin_momentum", "super_admin"] },
   { href: "/admin/katalog", label: "Katalog", icon: "store", roles: ["admin_mahesa", "super_admin"] },
   { href: "/admin/wcc", label: "WCC", icon: "video", roles: ["admin_momentum", "super_admin"] },
+  { href: "/admin/paket-undangan", label: "Paket undangan", icon: "rings", roles: ["admin_momentum", "super_admin"] },
   { href: "/admin/promo", label: "Kartu promo", icon: "megaphone", roles: ["super_admin"] },
   { href: "/admin/ceklis", label: "Ceklis default", icon: "checklist", roles: ["super_admin"] },
   { href: "/admin/akun", label: "Akun dan kontak", icon: "people", roles: ["super_admin"] },

@@ -539,12 +539,14 @@ const step = async (name, fn) => { try { const r = await fn(); log(r !== false, 
   await page.setViewportSize({ width: 390, height: 844 });
   await step('pasangan baru: buat proyek -> /mulai', async () => { await btn('Buat proyek baru').click(); await page.waitForURL('**/mulai'); });
   await step('mulai: validasi nama, jalur, lalu selesai', async () => {
+    await btn('Lanjut').click(); const e0 = await page.getByText('Pilih salah satu dulu.').isVisible();
+    await page.getByRole('radio', { name: /Planner lengkap/ }).check(); await btn('Lanjut').click();
     await btn('Lanjut').click(); const e1 = await page.getByText('Isi nama pengantin wanita.').isVisible();
     await page.getByLabel('Nama pengantin wanita').fill('Sinta'); await page.getByLabel('Nama pengantin pria').fill('Bima'); await btn('Lanjut').click();
     await btn('Lanjut').click(); const e2 = await page.getByText('Pilih salah satu jalur dulu.').isVisible();
     await page.getByRole('radio', { name: /Non-Muslim/ }).check(); await btn('Lanjut').click();
     await btn('Simpan dan buat proyek').click(); await page.getByText('Kode pasangan').waitFor();
-    return e1 && e2;
+    return e0 && e1 && e2;
   });
   await shot('16-mulai-kode');
   await step('mulai: lanjut ke beranda dengan tanggal kosong', async () => { await page.getByRole('link', { name: 'Lanjut ke beranda' }).click(); await page.waitForURL('**/beranda'); return await page.getByText('Tanggal akad belum diisi').isVisible(); });

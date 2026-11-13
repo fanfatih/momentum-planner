@@ -142,6 +142,7 @@ export async function loadSnapshot(sb: SupabaseClient, userId: string): Promise<
       id,
       code: s(w.code),
       track: (w.track as Wedding["track"]) ?? null,
+      mode: w.app_mode === "undangan" || w.app_mode === "planner" ? (w.app_mode as Wedding["mode"]) : null,
       brideName: s(w.bride_name),
       groomName: s(w.groom_name),
       akadDate: w.akad_date ? s(w.akad_date) : null,
@@ -485,6 +486,7 @@ export const toRow = {
 export function weddingPatchRow(p: Partial<Wedding>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   if (p.track !== undefined) out.track = p.track;
+  if (p.mode !== undefined) out.app_mode = p.mode;
   if (p.brideName !== undefined) out.bride_name = p.brideName;
   if (p.groomName !== undefined) out.groom_name = p.groomName;
   if (p.akadDate !== undefined) out.akad_date = p.akadDate || null;

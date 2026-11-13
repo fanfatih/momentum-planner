@@ -243,6 +243,9 @@ export default function MasukPage() {
       </div>
       )}
     <nav aria-label="Dokumen" className="mt-10 flex justify-center gap-5 px-5 text-[14px] text-ink-soft">
+        <Link href="/katalog" className="inline-flex min-h-11 items-center underline underline-offset-4">
+          Katalog undangan
+        </Link>
         <Link href="/privasi" className="inline-flex min-h-11 items-center underline underline-offset-4">
           Kebijakan privasi
         </Link>
